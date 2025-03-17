@@ -1,0 +1,7 @@
+Services needed:
+
+[] - User registration, secure login and account management
+[] - Provision of computational resources that is elastic (shrinks and grows as needed)
+[] - Disk storage
+[] - Container service
+[] - Database service
