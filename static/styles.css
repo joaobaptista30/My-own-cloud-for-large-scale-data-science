@@ -1,0 +1,31 @@
+
+
+.navbar{
+    display: flex;
+    width: 100%;
+    position: fixed;
+
+    .title{
+        width: 25%;
+        text-align: center;
+    }
+
+    .resources_buttons{
+        width: 55%;
+        display: grid;
+        grid-column: auto;
+        grid-row: 1;
+
+        button{
+            text-align: center;
+            cursor: pointer;
+        }
+        
+    }
+
+    .profile_button{
+        width: 20%;
+        justify-items: right;
+        
+    }
+}
