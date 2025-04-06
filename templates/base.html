@@ -18,7 +18,7 @@
                 <a href="/database" class="database">Data Bases</a>
             </div>
             <div class="profile_button">
-                <a href="/profile" class="btn">Profile</a>
+                <a href="{{ '/profile' if user_logged_in else '/login' }}" class="btn">{{ 'Profile' if user_logged_in else 'Login/Register' }}</a>
             </div>
         </nav>
 

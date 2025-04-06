@@ -13,7 +13,7 @@ body{
     display: flex;
     align-items: center;
     width: 100%;
-    padding: 20px 0px;
+    margin: 20px 0px 15px 0px;
     gap: 80px;
 
     .title{
@@ -66,8 +66,8 @@ body{
         width: 25%;
         a{
             cursor: pointer;
-            width: 30%;
-            font-size: 30px;
+            width: 150px;
+            font-size: 25px;
             font-weight: bold;
             border: 2px solid var(--darkerblue);
             color: #fff;
