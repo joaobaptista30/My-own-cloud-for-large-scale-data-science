@@ -8,18 +8,21 @@
     </head>
     <body>
         <nav class="navbar">
-            <div class="title">My Own Cloud</div>
+            <div class="title">
+                <a href="/" class="btn title-btn">My Own <span>Cloud</span></a>
+            </div>
             <div class="resources_buttons">
-                <button>VMs</button>
-                <button>Disk Storage</button>
-                <button>Containers</button>
-                <button>Data Bases</button>
+                <a href="/virtualmachine" class="virtualmachine">Virtual Machines</a>
+                <a href="/diskstorage" class="diskstorage">Disk Storage</a>
+                <a href="/container" class="container">Containers</a>
+                <a href="/database" class="database">Data Bases</a>
             </div>
             <div class="profile_button">
-                <button>profile</button>
+                <a href="/profile" class="btn">Profile</a>
             </div>
-            
         </nav>
+
+        <hr class="division">
 		
         {%block body%}
 

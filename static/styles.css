@@ -1,31 +1,92 @@
+:root{
+    --background: rgb(245, 238, 220);
+    --lightblue: rgb(39, 84, 138);
+    --darkerblue: rgb(24, 59, 78);
+    --lightorange: rgb(221, 168, 83);
+}
 
+body{
+    background-color: var(--background);
+}
 
 .navbar{
     display: flex;
+    align-items: center;
     width: 100%;
-    position: fixed;
+    padding: 20px 0px;
+    gap: 80px;
 
     .title{
         width: 25%;
-        text-align: center;
+        align-items: left;
+        a{
+            color: var(--darkerblue);
+            width: 100%;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 30px;
+            font-weight: bold;
+            text-align: right;
+            text-decoration: none;
+            display: inline-block;
+        }
+        span{
+            color: var(--lightorange);
+        }
     }
 
     .resources_buttons{
-        width: 55%;
-        display: grid;
-        grid-column: auto;
-        grid-row: 1;
+        width: 50%;
+        display: flex;
+        gap: 70px;
 
-        button{
-            text-align: center;
+        a{
+            background: none;
+            border: none;
+            font-size: 24px;
             cursor: pointer;
+            text-align: center;
+            font-weight: normal;
+            color: var(--darkerblue);
+            transition: font-weight 0.2s;
+            text-decoration: none;
+            display: inline-block;
         }
-        
+        a:hover {
+            font-weight: bold;
+        }
+        .virtualmachine{width: 210px;}
+        .diskstorage{width: 165px;}
+        .container{width: 140px;}
+        .database{width: 150px;}
     }
 
     .profile_button{
-        width: 20%;
-        justify-items: right;
-        
+        width: 25%;
+        a{
+            cursor: pointer;
+            width: 30%;
+            font-size: 30px;
+            font-weight: bold;
+            border: 2px solid var(--darkerblue);
+            color: #fff;
+            box-shadow: 0 0 40px 40px var(--lightorange) inset, 0 0 0 0 var(--darkerblue);
+            border-radius: 15px;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            padding: 10px 20px;
+        }
+        a:hover {
+            color: var(--lightblue);
+            box-shadow: 0 0 10px 0 var(--lightblue), 0 0 10px 4px var(--lightblue);
+        }
     }
+}
+
+.division{
+    width: 100%;
+    height: 5px;
+    background: var(--darkerblue);
 }
