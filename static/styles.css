@@ -56,7 +56,7 @@ body{
         a:hover {
             font-weight: bold;
         }
-        .virtualmachine{width: 210px;}
+        .virtualmachine{width: 220px;}
         .diskstorage{width: 165px;}
         .container{width: 140px;}
         .database{width: 150px;}
