@@ -44,37 +44,58 @@ def verify_token(token):
 ### pages endpoint ###
 @APP.route('/')
 def index():
-    return render_template('index.html')
+    token = request.cookies.get("token")
+    user_logged_in = False
+    if token:
+        user_logged_in = True
+        
+    return render_template('index.html',user_logged_in=user_logged_in)
 
 
+@APP.route('/login')
+def login():
+    return render_template("login.html")
 
-@APP.route('/profile')
-def profile():
-    return render_template('underdev.html')
-
-
+@APP.route('/account')
+def account():
+    username = request.cookies.get("username")
+    if not username:
+        return redirect(url_for("login"))
+    
+    return render_template('account.html',user_logged_in=username)
 
 @APP.route('/virtualmachine')
 def vm():
-    return render_template('underdev.html')
-
-
+    username = request.cookies.get("username")
+    if not username:
+        return redirect(url_for("login"))
+    
+    return render_template('underdev.html',user_logged_in=username)
 
 @APP.route('/diskstorage')
 def diskstorage():
-    return render_template('underdev.html')
-
-
+    username = request.cookies.get("username")
+    if not username:
+        return redirect(url_for("login"))
+    
+    return render_template('underdev.html',user_logged_in=username)
 
 @APP.route('/container')
 def containers():
-    return render_template('underdev.html')
-
-
+    username = request.cookies.get("username")
+    if not username:
+        return redirect(url_for("login"))
+    
+    return render_template('underdev.html',user_logged_in=username)
 
 @APP.route('/database')
 def databased():
-    return render_template('underdev.html')
+    username = request.cookies.get("username")
+    if not username:
+        return redirect(url_for("login"))
+    
+    return render_template('underdev.html',user_logged_in=username)
+
 
 
 ### API endpoints ###
