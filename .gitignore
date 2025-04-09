@@ -4,4 +4,5 @@ __pycache__/
 code/
 instance/
 
-.env
+# app config
+config.py

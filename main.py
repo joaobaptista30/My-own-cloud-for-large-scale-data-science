@@ -2,20 +2,18 @@ import os
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-from flask import Flask, request, jsonify, render_template, redirect, url_for
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
 from db_tables import db, User
 from sqlalchemy import or_
 import bcrypt
 import jwt
 import datetime
-from dotenv import load_dotenv
-load_dotenv()
+from config import Config
 
 
 APP = Flask(__name__)
-APP.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
-APP.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("SQLALCHEMY_DATABASE_URI")
-APP.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = os.getenv("SQLALCHEMY_TRACK_MODIFICATIONS")
+APP.config.from_object(Config)
+
 
 
 db.init_app(APP)
@@ -44,12 +42,7 @@ def verify_token(token):
 ### pages endpoint ###
 @APP.route('/')
 def index():
-    token = request.cookies.get("token")
-    user_logged_in = False
-    if token:
-        user_logged_in = True
-        
-    return render_template('index.html',user_logged_in=user_logged_in)
+    return render_template('index.html')
 
 
 @APP.route('/login')
@@ -58,43 +51,38 @@ def login():
 
 @APP.route('/account')
 def account():
-    username = request.cookies.get("username")
-    if not username:
+    if not session.get("token") or not verify_token(session.get("token")):
         return redirect(url_for("login"))
-    
-    return render_template('account.html',user_logged_in=username)
+        
+    return render_template('account.html')
 
 @APP.route('/virtualmachine')
 def vm():
-    username = request.cookies.get("username")
-    if not username:
+    if not session.get("token") or not verify_token(session.get("token")):
         return redirect(url_for("login"))
     
-    return render_template('underdev.html',user_logged_in=username)
+    return render_template('underdev.html')
 
 @APP.route('/diskstorage')
 def diskstorage():
-    username = request.cookies.get("username")
-    if not username:
+    if not session.get("token") or not verify_token(session.get("token")):
         return redirect(url_for("login"))
     
-    return render_template('underdev.html',user_logged_in=username)
+    return render_template('underdev.html')
 
 @APP.route('/container')
 def containers():
-    username = request.cookies.get("username")
-    if not username:
+    if not session.get("token") or not verify_token(session.get("token")):
         return redirect(url_for("login"))
     
-    return render_template('underdev.html',user_logged_in=username)
+    return render_template('underdev.html')
 
 @APP.route('/database')
 def databased():
-    username = request.cookies.get("username")
-    if not username:
+    if not session.get("token") or not verify_token(session.get("token")):
         return redirect(url_for("login"))
+    return render_template('underdev.html')
     
-    return render_template('underdev.html',user_logged_in=username)
 
 
 
@@ -107,11 +95,15 @@ def api_register():
     password = request.form.get("password")
 
     if not username or not email or not password:
-        return jsonify({"error": "Missing required fields"}), 400
+        error = "Missing required fields"
+        return redirect(url_for("login", error=error))
+        # return jsonify({"error": "Missing required fields"}), 400
 
     if User.query.filter_by(username=username).first() or User.query.filter_by(email=email).first():
-        #TODO now html indicar que user ja existe
-        return jsonify({"error": "Username or email already exists"}), 409
+        #TODO
+        error = "Username or email already exists"
+        return redirect(url_for("login", error=error))
+        # return jsonify({"error": "Username or email already exists"}), 409
 
     password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
     new_user = User(username=username, email=email, password_hash=password_hash)
@@ -119,10 +111,11 @@ def api_register():
     db.session.commit()
     
     token = generate_token(new_user.id)
-    response = redirect(url_for("account"))
-    response.set_cookie("token", token, max_age=86400)
-    response.set_cookie("username", username, max_age=86400)
-    return response
+    session.permanent = True
+    session["token"] = token
+    session["username"] = username
+    
+    return redirect(url_for("account"))
 
 
 @APP.route('/api/login', methods=["POST"])
@@ -133,10 +126,19 @@ def api_login():
     user = User.query.filter(or_(User.username == identifier, User.email == identifier)).first()
     if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
         #TODO no html indicar que algum esta errado
-        return jsonify({"error": "Invalid username or password"}), 401
+        error = "Invalid username or password"
+        return redirect(url_for("login", error=error))
+        #return jsonify({"error": error}), 401
 
     token = generate_token(user.id)
-    response = redirect(url_for("account"))
-    response.set_cookie("token", token, max_age=86400)
-    response.set_cookie("username", user.username, max_age=86400)
-    return response
+    session.permanent = True
+    session["token"] = token
+    session["username"] = user.username
+
+    return redirect(url_for("account"))
+
+
+@APP.route('/api/logout')
+def api_logout():
+    session.clear()
+    return redirect(url_for("index"))

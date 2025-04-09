@@ -18,7 +18,7 @@
                 <a href="/database" class="database">Data Bases</a>
             </div>
             <div class="account_button">
-                <a href="{{ '/account' if user_logged_in else '/login' }}" class="btn">{{ 'Account' if user_logged_in else 'Login/Register' }}</a>
+                <a href="{{ '/account' if session['token'] else '/login' }}" class="btn">{{ session["username"] if session["token"] else 'Login/Register' }}</a>
             </div>
         </nav>
 

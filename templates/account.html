@@ -5,7 +5,8 @@
 
 <div class="account_page">
 
-    <h1>Welcome Back</h1>
+    <h1>Welcome Back, {{ session["username"] }}</h1>
+    <a href="/api/logout" class="logout_button">logout</a>
     
 </div>
 

@@ -1,9 +1,9 @@
 Services needed:
 
 [] - User registration, secure login and account management
-    [] login/register page
+    [X] login/register page
+    [X] login/register and logout functions
     [] dashboard page
-    [] login/register and logout functions
     [] account management functionalities
 
 [] - Provision of computational resources that is elastic (shrinks and grows as needed)
