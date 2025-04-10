@@ -2,7 +2,7 @@ import os
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 from db_tables import db, User
 from sqlalchemy import or_
 import bcrypt
@@ -95,15 +95,13 @@ def api_register():
     password = request.form.get("password")
 
     if not username or not email or not password:
-        error = "Missing required fields"
-        return redirect(url_for("login", error=error))
-        # return jsonify({"error": "Missing required fields"}), 400
+        flash("Missing required fields")
+        return redirect(url_for("login"))
 
     if User.query.filter_by(username=username).first() or User.query.filter_by(email=email).first():
         #TODO
-        error = "Username or email already exists"
-        return redirect(url_for("login", error=error))
-        # return jsonify({"error": "Username or email already exists"}), 409
+        flash("Username or email already exists")
+        return redirect(url_for("login"))
 
     password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
     new_user = User(username=username, email=email, password_hash=password_hash)
@@ -126,9 +124,8 @@ def api_login():
     user = User.query.filter(or_(User.username == identifier, User.email == identifier)).first()
     if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
         #TODO no html indicar que algum esta errado
-        error = "Invalid username or password"
-        return redirect(url_for("login", error=error))
-        #return jsonify({"error": error}), 401
+        flash("Invalid username or password")
+        return redirect(url_for("login"))
 
     token = generate_token(user.id)
     session.permanent = True
