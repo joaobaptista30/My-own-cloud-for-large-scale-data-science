@@ -17,37 +17,41 @@
 
         
         <div id="login-form" class="form" style="display: block;">
-            {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="flash-messages">
-                {% for message in messages %}
-                    <div class="alert">{{ message }}</div>
-                {% endfor %}
-                </div>
-            {% endif %}
-            {% endwith %}
             <form method="POST" action="/api/login">
                 <input type="text" name="username" placeholder="Username/Email" required>
                 <input type="password" name="password" placeholder="Password" required>
                 <button type="submit">Login</button>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                  <div class="login-error">
+                    {% for category, message in messages %}
+                        <div class="alert">{{ message }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              {% endwith %}
             </form>
         </div>
 
         <div id="register-form" class="form" style="display: none;">
-            {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="flash-messages">
-                {% for message in messages %}
-                    <div class="alert">{{ message }}</div>
-                {% endfor %}
-                </div>
-            {% endif %}
-            {% endwith %}
             <form method="POST" action="/api/register">
                 <input type="text" name="username" placeholder="Username" required>
                 <input type="email" name="email" placeholder="Email" required>
                 <input type="password" name="password" placeholder="Password" required>
                 <button type="submit">Register</button>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                  <div class="register-error">
+                    {% for category, message in messages %}
+                      {% if category == 'register_error' %}
+                        <div class="alert">{{ message }}</div>
+                      {% endif %}
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              {% endwith %}
             </form>
         </div>
     </div>
