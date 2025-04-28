@@ -7,6 +7,9 @@ Services needed:
     [] account management functionalities
 
 [] - Provision of computational resources that is elastic (shrinks and grows as needed)
+    [] create VM (allow to associate a team to it)
+    [] delete VM
+    [] automate the elasticy to grows and shrink as needed (also make it shutdown after 5 min of inactivity)
     []
     []
     []

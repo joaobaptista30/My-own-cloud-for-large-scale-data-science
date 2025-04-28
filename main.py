@@ -99,7 +99,6 @@ def api_register():
         return redirect(url_for("login"))
 
     if User.query.filter_by(username=username).first() or User.query.filter_by(email=email).first():
-        #TODO
         flash("Username or email already exists",category="register_error")
         return redirect(url_for("login"))
 
@@ -123,7 +122,6 @@ def api_login():
 
     user = User.query.filter(or_(User.username == identifier, User.email == identifier)).first()
     if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
-        #TODO no html indicar que algum esta errado
         flash("Invalid username or password",category="login_error")
         return redirect(url_for("login"))
 
