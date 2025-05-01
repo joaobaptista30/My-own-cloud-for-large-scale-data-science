@@ -3,40 +3,46 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(60), nullable=False)
+    UserId = db.Column(db.Integer, primary_key=True)
+    UserName = db.Column(db.String(80), unique=True, nullable=False)
+    UserEmailHash = db.Column(db.String(120), unique=True, nullable=False)
+    UserPasswordHash = db.Column(db.String(60), nullable=False)
     # relationships
     teams = db.relationship('TeamMember', back_populates='user')
-    owned_teams = db.relationship('Teams', back_populates='owner')
 
-class Teams(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), unique=True, nullable=False)
-    description = db.Column(db.Text)
-    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+class Team(db.Model):
+    TeamId = db.Column(db.Integer, primary_key=True)
+    TeamName = db.Column(db.String(80), unique=True, nullable=False)
+    TeamDescription = db.Column(db.Text)
     # relationships
-    owner = db.relationship('User', back_populates='owned_teams')
     members = db.relationship('TeamMember', back_populates='team')
     services = db.relationship('Service', back_populates='team')
 
 class TeamMember(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    team_id = db.Column(db.Integer, db.ForeignKey('teams.id'))
-    role = db.Column(db.String(20))  # 'admin', 'member', etc.
+    UserId = db.Column(db.Integer, db.ForeignKey('user.UserId'), primary_key=True)
+    TeamId = db.Column(db.Integer, db.ForeignKey('team.TeamId'), primary_key=True)
+    RoleId = db.Column(db.Integer, db.ForeignKey('roles.RoleId'), nullable=False)
+    
+    __table_args__ = (
+        db.UniqueConstraint('UserId', 'TeamId', name='uix_user_team'),
+    )
     # relationships
     user = db.relationship('User', back_populates='teams')
-    team = db.relationship('Teams', back_populates='members')
+    team = db.relationship('Team', back_populates='members')
+    role = db.relationship('Role', back_populates='members')
+
+class Role(db.Model):
+    RoleId = db.Column(db.Integer, primary_key=True)
+    RoleName = db.Column(db.String(80), unique=True, nullable=False)
+    # relationships
+    members = db.relationship('TeamMember', back_populates='role')
 
 class Service(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
-    service_type = db.Column(db.String(20))  # 'compute', 'storage', 'container', 'database'
-    config = db.Column(db.JSON)  # Service configuration
-    team_id = db.Column(db.Integer, db.ForeignKey('teams.id'))
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    ServiceId = db.Column(db.Integer, primary_key=True)
+    ServiceName = db.Column(db.String, unique=True, nullable=False)
+    ServiceType = db.Column(db.String, nullable=False)
+    ServiceConfig = db.Column(db.JSON, nullable=False)
+    TeamId = db.Column(db.Integer, db.ForeignKey('team.TeamId'), nullable=False)
+    
     # relationships
-    team = db.relationship('Teams', back_populates='services')
-    user = db.relationship('User')
+    team = db.relationship('Team', back_populates='services')
