@@ -4,12 +4,70 @@
 
 
 <div class="account_page">
+    <div class="sidebar">
+        <h1>Welcome Back, <span><u>{{ session["username"] }}</u></span></h1>
+        <ul>
+            <li><a href="#" onclick="showPage('.acc')">Account</a></li>
+            <li><a href="#" onclick="showPage('.teamslist')">Teams</a></li>
+        </ul>
+        <a href="/api/logout" class="logout_button">Logout</a>
+    </div>
 
-    <h1>Welcome Back, {{ session["username"] }}</h1>
-    <a href="/api/logout" class="logout_button">logout</a>
-    
+    <div class="account_info">
+        <div class="acc">
+            <h1>Account</h1>
+        </div>
+
+        <div class="teamslist hidden">
+            <h1>Teams</h1>
+            <button id="create_team_button" class="create_team_button"> &plus; New Team</button>
+            
+            <div class="create_team_div">
+                <div class="content">
+                    <span class="close">&times;</span> <br>
+                    <form id="create_team_form" method="POST" action="/api/createteam">
+                        <label for="teamname">Team name: </label>
+                        <input type="text" id="teamname" name="teamname" required>
+                        <br><br>
+                        <label for="description">Team description: </label>
+                        <textarea id="description" name="description" rows="5" cols="50" style="resize: vertical;"></textarea>
+                        <br><br>
+                        <button type="submit">Create</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="list_teams_div">
+
+            </div>
+        </div>
+    </div>
 </div>
 
+<script>
+    function showPage(pageId) {
+        document.querySelector(".acc").classList.add("hidden");
+        document.querySelector(".teamslist").classList.add("hidden");
+        document.querySelector(pageId).classList.remove("hidden");
+    }
 
+
+    document.getElementsByClassName("create_team_button")[0].onclick = function() {
+        document.getElementsByClassName("create_team_div")[0].style.display = "block";
+    }
+
+    document.getElementsByClassName("close")[0].onclick = function() {
+        document.getElementsByClassName("create_team_div")[0].style.display = "none";
+    }
+
+    var  login_box = document.querySelector(".create_team_div");
+    // const modalContent = document.querySelector(".create_team_div .content");
+    window.onclick = function(event) {
+        if (event.target == login_box) {
+            login_box.style.display = "none";
+        }
+    }
+
+  </script>
 
 {% endblock %}
