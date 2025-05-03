@@ -97,17 +97,16 @@ def api_register():
     if not username or not email or not password:
         flash("Missing required fields")
         return redirect(url_for("login"))
-
-    if User.query.filter_by(username=username).first() or User.query.filter_by(email=email).first():
+    if User.query.filter_by(UserName=username).first() or User.query.filter_by(UserEmail=email).first():
         flash("Username or email already exists",category="register_error")
         return redirect(url_for("login"))
 
     password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-    new_user = User(username=username, email=email, password_hash=password_hash)
+    new_user = User(UserName=username, UserEmail=email, UserPasswordHash=password_hash)
     db.session.add(new_user)
     db.session.commit()
     
-    token = generate_token(new_user.id)
+    token = generate_token(new_user.UserId)
     session.permanent = True
     session["token"] = token
     session["username"] = username
@@ -120,15 +119,15 @@ def api_login():
     identifier = request.form.get("username")
     password = request.form.get("password")
 
-    user = User.query.filter(or_(User.username == identifier, User.email == identifier)).first()
-    if not user or not bcrypt.checkpw(password.encode("utf-8"), user.password_hash):
+    user = User.query.filter(or_(User.UserName == identifier, User.UserEmail == identifier)).first()
+    if not user or not bcrypt.checkpw(password.encode("utf-8"), user.UserPasswordHash):
         flash("Invalid username or password",category="login_error")
         return redirect(url_for("login"))
 
-    token = generate_token(user.id)
+    token = generate_token(user.UserId)
     session.permanent = True
     session["token"] = token
-    session["username"] = user.username
+    session["username"] = user.UserName
 
     return redirect(url_for("account"))
 
