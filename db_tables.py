@@ -21,7 +21,7 @@ class Team(db.Model):
 class TeamMember(db.Model):
     UserId = db.Column(db.Integer, db.ForeignKey('user.UserId'), primary_key=True)
     TeamId = db.Column(db.Integer, db.ForeignKey('team.TeamId'), primary_key=True)
-    RoleId = db.Column(db.Integer, db.ForeignKey('roles.RoleId'), nullable=False)
+    RoleId = db.Column(db.Integer, db.ForeignKey('role.RoleId'), nullable=False)
     
     __table_args__ = (
         db.UniqueConstraint('UserId', 'TeamId', name='uix_user_team'),
