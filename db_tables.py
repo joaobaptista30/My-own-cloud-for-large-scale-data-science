@@ -5,7 +5,7 @@ db = SQLAlchemy()
 class User(db.Model):
     UserId = db.Column(db.Integer, primary_key=True)
     UserName = db.Column(db.String(80), unique=True, nullable=False)
-    UserEmailHash = db.Column(db.String(120), unique=True, nullable=False)
+    UserEmail = db.Column(db.String(120), unique=True, nullable=False)
     UserPasswordHash = db.Column(db.String(60), nullable=False)
     # relationships
     teams = db.relationship('TeamMember', back_populates='user')
