@@ -3,8 +3,8 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
-from db_tables import db, User
-from sqlalchemy import or_
+from db_tables import db, User, Team, TeamMember, Role, Service
+from sqlalchemy import or_, text
 import bcrypt
 import jwt
 import datetime
@@ -53,8 +53,22 @@ def login():
 def account():
     if not session.get("token") or not verify_token(session.get("token")):
         return redirect(url_for("login"))
+    
+    page = request.args.get('page','acc')
+    
+    teams = db.session.execute(text('''
+        SELECT t.TeamName, t.TeamDescription
+        FROM team AS t
+        WHERE t.TeamId IN (
+            SELECT tm.TeamId
+            FROM team_member AS tm
+            WHERE tm.UserId IN (
+                SELECT u.UserId
+                FROM user AS u
+                WHERE u.UserName like :username ))
+    '''), {"username": session.get("username")}).fetchall()
         
-    return render_template('account.html')
+    return render_template('account.html',page=page, teams=teams)
 
 @APP.route('/virtualmachine')
 def vm():
@@ -111,7 +125,7 @@ def api_register():
     session["token"] = token
     session["username"] = username
     
-    return redirect(url_for("account"))
+    return redirect(url_for("account", page="acc"))
 
 
 @APP.route('/api/login', methods=["POST"])
@@ -129,10 +143,50 @@ def api_login():
     session["token"] = token
     session["username"] = user.UserName
 
-    return redirect(url_for("account"))
+    return redirect(url_for("account", page="acc"))
 
 
 @APP.route('/api/logout')
 def api_logout():
     session.clear()
     return redirect(url_for("index"))
+
+
+@APP.route('/api/createteam', methods=["POST"])
+def api_create_team():
+    teamname = request.form.get("teamname")
+    teamdescription = request.form.get("description")
+    
+    if Team.query.filter_by(TeamName=teamname).first():
+        flash("Team already exists",category="team_error")
+        return redirect(url_for("account", page="teams"))
+    
+    user = User.query.filter(User.UserName == session.get("username")).first()
+    if not user:
+        flash("User not found", category="team_error")
+        return redirect(url_for("account", page="teams"))
+    
+    try:
+        # create team
+        newteam = Team(TeamName=teamname, TeamDescription=teamdescription)
+        db.session.add(newteam)
+        db.session.flush()
+        # create user role in team
+        newteammember = TeamMember(UserId=user.UserId, TeamId=newteam.TeamId, RoleId=1)
+        db.session.add(newteammember)
+        db.session.commit()
+        
+    except Exception as e:
+        db.session.rollback()
+        flash("Error creating team: " + str(e), category="team_error")
+
+    
+    return redirect(url_for("account", page="teams"))
+
+
+'''
+para ver todas as equipas de 1 user
+for membership in user.teams:
+    print(membership.team.TeamName)  # Follows `teams = db.relationship('TeamMember')`
+
+'''

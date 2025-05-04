@@ -14,11 +14,11 @@
     </div>
 
     <div class="account_info">
-        <div class="acc">
+        <div class="acc {{ 'hidden' if page != 'acc' else ' ' }}">
             <h1>Account</h1>
         </div>
 
-        <div class="teamslist hidden">
+        <div class="teamslist {{ 'hidden' if page != 'teams' else ' ' }}">
             <h1>Teams</h1>
             <button id="create_team_button" class="create_team_button"> &plus; New Team</button>
             
@@ -38,7 +38,9 @@
             </div>
 
             <div class="list_teams_div">
-
+                {% for team in teams %}
+                    <li>{{ team.TeamName }} - {{ team.TeamDescription }}</li>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -61,7 +63,6 @@
     }
 
     var  login_box = document.querySelector(".create_team_div");
-    // const modalContent = document.querySelector(".create_team_div .content");
     window.onclick = function(event) {
         if (event.target == login_box) {
             login_box.style.display = "none";
