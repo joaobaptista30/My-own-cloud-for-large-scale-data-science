@@ -57,7 +57,7 @@ def account():
     page = request.args.get('page','acc')
     
     teams = db.session.execute(text('''
-        SELECT t.TeamName, t.TeamDescription
+        SELECT t.TeamName, t.TeamDescription, t.TeamId
         FROM team AS t
         WHERE t.TeamId IN (
             SELECT tm.TeamId
@@ -181,6 +181,28 @@ def api_create_team():
         flash("Error creating team: " + str(e), category="team_error")
 
     
+    return redirect(url_for("account", page="teams"))
+
+
+@APP.route('/api/leaveteam', methods=["POST"])
+def api_leave_team():
+    teamid = request.form.get("teamid")
+    user = User.query.filter(User.UserName == session.get("username")).first()
+    teammember = TeamMember.query.filter_by(UserId=user.UserId, TeamId=teamid).first()
+    
+    if teammember.role.RoleName == "owner":
+        members = TeamMember.query.filter_by(TeamId=teamid).count()
+        if members == 1: # apenas 1 user na equipa
+            team = Team.query.get(teamid)
+            if team:
+                db.session.delete(team)
+        else: # leave e promover novo user a owner
+            next_owner = TeamMember.query.filter_by(TeamId=teamid).order_by(TeamMember.RoleId)[1]
+            next_owner.RoleId = 1
+
+    db.session.delete(teammember)
+    db.session.commit()
+        
     return redirect(url_for("account", page="teams"))
 
 
