@@ -314,5 +314,37 @@ body{
             }
         }
 
+        .list_teams_div{
+            .teams_table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+                font-family: sans-serif;
+            }
+        
+            .teams_table th, .teams_table td {
+                border: 1px solid #ccc;
+                padding: 10px;
+                text-align: left;
+                vertical-align: top;
+            }
+        
+            .teams_table th {
+                background-color: var(--background);
+            }
+        
+            .leave_button {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                cursor: pointer;
+                border-radius: 4px;
+            }
+        
+            .leave_button:hover {
+                background-color: #c0392b;
+            }
+        }
     }
 }

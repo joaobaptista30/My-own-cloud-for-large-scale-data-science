@@ -38,10 +38,32 @@
             </div>
 
             <div class="list_teams_div">
-                {% for team in teams %}
-                    <li>{{ team.TeamName }} - {{ team.TeamDescription }}</li>
-                {% endfor %}
+                <br><br>
+                <table class="teams_table">
+                    <thead>
+                        <tr style="color: black;">
+                            <th>Name</th>
+                            <th style="width: 60%;">Description</th>
+                            <th style="text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for team in teams %}
+                            <tr>
+                                <td>{{ team.TeamName }}</td>
+                                <td>{{ team.TeamDescription if team.TeamDescription else "No description" }}</td>
+                                <td style="text-align: center; vertical-align: middle;">
+                                    <form method="POST" action="/api/leaveteam" style="margin: 0;">
+                                        <input type="hidden" name="teamid" value="{{ team.TeamId }}">
+                                        <button type="submit" class="leave_button">Leave</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
+
         </div>
     </div>
 </div>
