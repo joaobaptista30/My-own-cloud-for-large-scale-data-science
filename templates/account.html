@@ -26,13 +26,31 @@
                 <div class="content">
                     <span class="close">&times;</span> <br>
                     <form id="create_team_form" method="POST" action="/api/createteam">
-                        <label for="teamname">Team name: </label>
+                        <label for="teamname">Team Name: </label>
                         <input type="text" id="teamname" name="teamname" required>
                         <br><br>
-                        <label for="description">Team description: </label>
+                        <label for="description">Team Description: </label>
                         <textarea id="description" name="description" rows="5" cols="50" style="resize: vertical;"></textarea>
                         <br><br>
                         <button type="submit">Create</button>
+                    </form>
+                </div>
+            </div>
+            <div class="add_member_div">
+                <div class="content">
+                    <span class="close">&times;</span> <br>
+                    <form id="add_member_form" method="POST" action="/api/addteammember">
+                        <input type="hidden" name="teamid" id="add_member_teamid">
+                        <label for="username">New Member Name: </label>
+                        <input type="text" id="username" name="username" required>
+                        <br><br>
+                        <label for="role">Role: </label>
+                        <select id="role" name="role" required>
+                            <option value="3">Member</option>
+                            <option value="2">Admin</option>
+                        </select>
+                        <br><br>
+                        <button type="submit">Add Member</button>
                     </form>
                 </div>
             </div>
@@ -43,6 +61,7 @@
                     <thead>
                         <tr style="color: black;">
                             <th>Name</th>
+                            <th>Role</th>
                             <th style="width: 60%;">Description</th>
                             <th style="text-align: center;">Action</th>
                         </tr>
@@ -51,12 +70,16 @@
                         {% for team in teams %}
                             <tr>
                                 <td>{{ team.TeamName }}</td>
+                                <td>{{ team.RoleName }}</td>
                                 <td>{{ team.TeamDescription if team.TeamDescription else "No description" }}</td>
                                 <td style="text-align: center; vertical-align: middle;">
-                                    <form method="POST" action="/api/leaveteam" style="margin: 0;">
-                                        <input type="hidden" name="teamid" value="{{ team.TeamId }}">
-                                        <button type="submit" class="leave_button">Leave</button>
-                                    </form>
+                                    <div class="action_buttons">
+                                        <form method="POST" action="/api/leaveteam" style="margin: 0;">
+                                            <input type="hidden" name="teamid" value="{{ team.TeamId }}">
+                                            <button type="submit" class="leave_button">Leave</button>
+                                        </form>
+                                        <button class="add_member_button" data-teamid="{{ team.TeamId }}">Add Member</button>
+                                    </div>
                                 </td>
                             </tr>
                         {% endfor %}
@@ -91,6 +114,48 @@
         }
     }
 
-  </script>
+    const addMemberButtons = document.querySelectorAll('.add_member_button');
+    const addMemberModal = document.querySelector('.add_member_div');
+    const addMemberClose = document.querySelector('.add_member_div .close');
+    const addMemberTeamIdInput = document.getElementById('add_member_teamid');
+
+    addMemberButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const teamId = button.getAttribute('data-teamid');
+            addMemberTeamIdInput.value = teamId;
+            addMemberModal.style.display = 'block';
+        });
+    });
+
+    addMemberClose.onclick = function () {
+        addMemberModal.style.display = "none";
+    };
+
+    window.addEventListener("click", function(event) {
+        if (event.target === addMemberModal) {
+            addMemberModal.style.display = "none";
+        }
+    });
+</script>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div id="flash-popup" class="flash-popup">
+      {% for category, message in messages %}
+        <div class="flash-message {{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    <script>
+      const flashPopup = document.getElementById("flash-popup");
+      if (flashPopup) {
+        flashPopup.style.display = "block";
+        setTimeout(() => {
+          flashPopup.style.opacity = "0";
+          setTimeout(() => flashPopup.style.display = "none", 500);
+        }, 3000);
+      }
+    </script>
+  {% endif %}
+{% endwith %}
 
 {% endblock %}

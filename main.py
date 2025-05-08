@@ -56,19 +56,21 @@ def account():
     
     page = request.args.get('page','acc')
     
-    teams = db.session.execute(text('''
-        SELECT t.TeamName, t.TeamDescription, t.TeamId
-        FROM team AS t
-        WHERE t.TeamId IN (
-            SELECT tm.TeamId
-            FROM team_member AS tm
-            WHERE tm.UserId IN (
-                SELECT u.UserId
-                FROM user AS u
-                WHERE u.UserName like :username ))
-    '''), {"username": session.get("username")}).fetchall()
-        
-    return render_template('account.html',page=page, teams=teams)
+    user = User.query.filter_by(UserName=session.get("username")).first()
+    
+    teams = (db.session.query(Team, Role.RoleName)
+            .join(TeamMember, Team.TeamId == TeamMember.TeamId)
+            .join(Role, TeamMember.RoleId == Role.RoleId)
+            .filter(TeamMember.UserId == user.UserId)
+            .all())
+    
+    team_data = [{'TeamId': team.TeamId,
+                'TeamName': team.TeamName,
+                'TeamDescription': team.TeamDescription,
+                'RoleName': role_name}
+                for team, role_name in teams]
+            
+    return render_template('account.html',page=page, teams=team_data)
 
 @APP.route('/virtualmachine')
 def vm():
@@ -205,6 +207,40 @@ def api_leave_team():
         
     return redirect(url_for("account", page="teams"))
 
+
+@APP.route('/api/addteammember', methods=["POST"])
+def api_add_teammember():
+    teamid = request.form.get("teamid")
+    username = request.form.get("username")
+    role = request.form.get("role")
+
+    if not teamid or not username or not role:
+        flash("Missing fields.", "error")
+        return redirect(url_for("account", page="teams"))
+
+    team = Team.query.filter_by(TeamId=teamid).first()
+    if not team:
+        flash("Team not found.", "error")
+        return redirect(url_for("account", page="teams"))
+
+    user = User.query.filter_by(UserName=username).first()
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for("account", page="teams"))
+
+    existing_member = TeamMember.query.filter_by(UserId=user.UserId, TeamId=teamid).first()
+    if existing_member:
+        existing_member.RoleId = role
+        db.session.commit()
+        return redirect(url_for("account", page="teams"))
+
+    new_member = TeamMember(UserId=user.UserId, TeamId=teamid, RoleId=role)
+    db.session.add(new_member)
+    db.session.commit()
+
+    flash("User added successfully.", "success")
+    return redirect(url_for("account", page="teams"))
+    
 
 '''
 para ver todas as equipas de 1 user
