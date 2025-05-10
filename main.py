@@ -223,6 +223,12 @@ def api_add_teammember():
         flash("Team not found.", "error")
         return redirect(url_for("account", page="teams"))
 
+    current_user = User.query.filter_by(UserName=session.get("username")).first()
+    userrole = TeamMember.query.filter_by(UserId=current_user.UserId, TeamId=teamid).first()
+    if userrole.RoleId == 3:
+        flash("You don't have permission to add members.", "error")
+        return redirect(url_for("account", page="teams"))
+
     user = User.query.filter_by(UserName=username).first()
     if not user:
         flash("User not found.", "error")
