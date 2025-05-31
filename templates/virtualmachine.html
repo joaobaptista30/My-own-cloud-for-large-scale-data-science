@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+<div class="vm_page">
+    <h1>Create and Manage VMs</h1>
+
+    <div class="team">
+        <span style="font-size: 1.5em;font-weight: bold;margin-right: 10px;">Team:</span>
+        <select id="team-select" onchange="selectTeam(this)">
+            <option value="" {% if not session.get("teamid_selected") %}selected{% endif %} style='display: {{ "none" if session.get("teamid_selected") else "block" }};'>-- Select team --</option>
+            {% for team in teams %}
+            <option value="{{ team.TeamId }}" {% if session.get("teamid_selected") == team.TeamId %}selected{% endif %}>{{ team.TeamName }}</option>
+            {% endfor %}
+        </select>
+        <button id="create_vm_button" class="create_vm_button" style='display: {{ "block" if session.get("teamid_selected") else "none" }};'> &plus; New Virtual Machine</button>
+
+        <div class="vm_create" style="display: none;">
+            <div class="content">
+                <span class="close">&times;</span> <br>
+                <form id="create_vm_form" method="POST" action="/api/createvirtualmachine">
+                    <label for="vmname">VM Name: </label>
+                    <input type="text" name="vmname" placeholder="Name" required />
+                    <label for="vmtype">Size: </label>
+                    <select name="vmtype">
+                        <option value="small">Small (2 cores, 1Gb RAM, 10Gb disk)</option>
+                        <option value="medium" selected>Medium (4 cores, 4Gb RAM, 20Gb disk)</option>
+                        <option value="large">Large (8 cores, 8Gb RAM, 50Gb disk)</option>
+                    </select>
+                    <label for="description">VM Description: </label>
+                    <textarea id="description" name="description" rows="5" cols="50" style="resize: vertical;"></textarea>
+                    <button class="submit_button" type="submit">Create</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="info">
+        <table class="vm_table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Description</th>
+                <th>IP</th>
+                <th style="text-align: center;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for service in services %}
+                <tr>
+                    <td>{{ service.ServiceName }}</td>
+                    <td> {{ service.ServiceConfig.server_status }} </td>
+                    <td>{{ service.ServiceConfig.server_description if service.ServiceConfig.server_description else "No description" }}</td>
+                    <td>ssh cirros@{{ service.ServiceConfig.server_ip }}</td>
+                    <td style="text-align: center; vertical-align: middle;">
+                        <div class="action_buttons"> 
+                            <form method="POST" action="/api/vmaction" style="margin: 0;">
+                                <input type="hidden" name="servicename" value="{{ service.ServiceName }}">
+                                <input type="hidden" name="serverid" value="{{ service.ServiceConfig.server_id }}">
+                                <input type="hidden" name="action" value="start">
+                                <button type="submit">Start</button>
+                            </form>
+
+                            <form method="POST" action="/api/vmaction" style="margin: 0;">
+                                <input type="hidden" name="servicename" value="{{ service.ServiceName }}">
+                                <input type="hidden" name="serverid" value="{{ service.ServiceConfig.server_id }}">
+                                <input type="hidden" name="action" value="stop">
+                                <button type="submit">ShutDown</button>
+                            </form>
+
+                            <form method="POST" action="/api/vmaction" style="margin: 0;">
+                                <input type="hidden" name="servicename" value="{{ service.ServiceName }}">
+                                <input type="hidden" name="serverid" value="{{ service.ServiceConfig.server_id }}">
+                                <input type="hidden" name="action" value="delete">
+                                <button type="submit">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function selectTeam(selectElement) {
+        const teamId = selectElement.value;
+        if (teamId != ""){
+            document.getElementsByClassName("create_vm_button")[0].style.display = "block";
+            selectElement.querySelector('option[value=""]').style.display = "none";
+            
+            fetch('/api/selectteam', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ team_id: teamId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('vm_created') === 'true' || urlParams.get('vm_updated') === 'true') {
+            document.getElementsByClassName("vm_create")[0].style.display = "none";
+            // Clean up the URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    });
+
+
+    document.getElementsByClassName("create_vm_button")[0].onclick = function() {
+        document.getElementsByClassName("vm_create")[0].style.display = "block";
+    }
+    document.getElementsByClassName("close")[0].onclick = function() {
+        document.getElementsByClassName("vm_create")[0].style.display = "none";
+    }
+    var login_box = document.querySelector(".vm_create");
+    window.onclick = function(event) {
+        if (event.target == login_box) {
+            login_box.style.display = "none";
+        }
+    }
+
+</script>
+
+
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div id="flash-popup" class="flash-popup">
+      {% for category, message in messages %}
+        <div class="flash-message {{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    <script>
+      const flashPopup = document.getElementById("flash-popup");
+      if (flashPopup) {
+        flashPopup.style.display = "block";
+        setTimeout(() => {
+          flashPopup.style.opacity = "0";
+          setTimeout(() => flashPopup.style.display = "none", 500);
+        }, 3000);
+      }
+    </script>
+  {% endif %}
+{% endwith %}
+
+{% endblock %}

@@ -78,7 +78,7 @@
                                             <input type="hidden" name="teamid" value="{{ team.TeamId }}">
                                             <button type="submit" class="leave_button">Leave</button>
                                         </form>
-                                        <button class="add_member_button" data-teamid="{{ team.TeamId }}">Add Member</button>
+                                        <button class="add_member_button" data-teamid="{{ team.TeamId }}" style="display: {{ 'none' if team.RoleName == 'member' else 'block' }}">Add Member</button>
                                     </div>
                                 </td>
                             </tr>

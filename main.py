@@ -8,13 +8,16 @@ from sqlalchemy import or_, text
 import bcrypt
 import jwt
 import datetime
+import openstack
+import time
+
 from config import Config
 
 
 APP = Flask(__name__)
 APP.config.from_object(Config)
 
-
+conn = openstack.connect(cloud='microstack')
 
 db.init_app(APP)
 with APP.app_context():
@@ -73,11 +76,15 @@ def account():
     return render_template('account.html',page=page, teams=team_data)
 
 @APP.route('/virtualmachine')
-def vm():
+def virtualmachine():
     if not session.get("token") or not verify_token(session.get("token")):
         return redirect(url_for("login"))
     
-    return render_template('underdev.html')
+    user = User.query.filter_by(UserName=session.get("username")).first()
+    teams = (Team.query.join(TeamMember).filter(TeamMember.UserId == user.UserId).all())
+    services = Service.query.filter_by(TeamId=session['teamid_selected'], ServiceType='VM').all()
+
+    return render_template('virtualmachine.html', teams=teams, services=services)
 
 @APP.route('/diskstorage')
 def diskstorage():
@@ -247,6 +254,96 @@ def api_add_teammember():
     flash("User added successfully.", "success")
     return redirect(url_for("account", page="teams"))
     
+
+@APP.route('/api/selectteam', methods=["POST"])
+def api_select_team():
+    data = request.get_json()
+    team_id = data.get('team_id')
+
+    if team_id:
+        team = Team.query.get(team_id)
+        session['teamid_selected'] = team.TeamId
+
+    return {"redirect": url_for("virtualmachine")}, 200
+
+
+@APP.route('/api/createvirtualmachine', methods=["POST"])
+def api_create_virtualmachine():
+    vm_name = request.form.get("vmname")
+    vm_type = request.form.get("vmtype")
+    vm_description = request.form.get("description")
+
+    if Service.query.filter_by(ServiceName=vm_name).all():
+        flash("Service name already exists", "error")
+        return redirect(url_for("virtualmachine"))
+
+    network = conn.network.find_network('test')
+
+    server = conn.compute.create_server(
+        name=vm_name,
+        image_id=conn.compute.find_image('cirros').id,
+        flavor_id=conn.compute.find_flavor(f"m1.{vm_type}").id,
+        networks=[{"uuid": network.id}],
+        key_name="mykey"
+    )
+
+    # Wait until it's active
+    server = conn.compute.wait_for_server(server, status='ACTIVE', failures=['ERROR'], interval=2, wait=300)
+    
+    # Allocate and associate a floating IP
+    external_network = conn.network.find_network('external')
+    floating_ip = conn.network.create_ip(floating_network_id=external_network.id)
+
+    ports = list(conn.network.ports(device_id=server.id))
+    server_port = ports[0]
+    conn.network.update_ip(floating_ip, port_id=server_port.id)
+
+
+
+    server_config = {"server_description": vm_description,
+                     "server_id": server.id,
+                     "server_status": server.status,
+                     "server_size": vm_type,
+                     "server_ip": floating_ip.floating_ip_address}
+
+    service_created = Service(ServiceName=vm_name, ServiceType="VM", ServiceConfig=server_config, TeamId=session['teamid_selected'])
+    db.session.add(service_created)
+    db.session.commit()
+
+    flash("Virtual Machine created successfully", "success")
+    return redirect(url_for("virtualmachine", vm_created="true"))
+
+
+@APP.route('/api/vmaction', methods=["POST"])
+def api_vm_action():
+    action = request.form.get("action")
+    vm_id = request.form.get("serverid")
+    service_name = request.form.get("servicename")
+
+    service = Service.query.filter_by(ServiceName=service_name).first()
+
+    if not service:
+        flash("Unexpected error", "error")
+        return redirect(url_for("virtualmachine"))
+
+    server = conn.compute.get_server(vm_id)
+    if action == "start":
+        service.ServiceConfig["server_status"] = "ACTIVE"
+        db.session.commit()
+        conn.compute.start_server(server)
+        #flash("Starting Virtual Machine successfully\nMay take a while", "success")
+
+    elif action == "stop":
+        service.ServiceConfig["server_status"] = "SHUTOFF"
+        db.session.commit()
+        conn.compute.stop_server(server)
+        #flash("Stopping Virtual Machine successfully\nMay take a while", "success")
+
+    elif action == "delete":
+        conn.compute.delete_server(server)
+        db.session.delete(service)
+
+    return redirect(url_for("virtualmachine", vm_updated="true"))
 
 '''
 para ver todas as equipas de 1 user
