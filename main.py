@@ -275,6 +275,10 @@ def api_logout():
 def api_create_team():
     teamname = request.form.get("teamname")
     teamdescription = request.form.get("description")
+
+    if not teamname:
+        flash("Missing required fields")
+        return redirect(url_for("account", page="teams"))
     
     if Team.query.filter_by(TeamName=teamname).first():
         flash("Team already exists",category="team_error")
@@ -309,6 +313,10 @@ def api_leave_team():
     teamid = request.form.get("teamid")
     user = User.query.filter(User.UserName == session.get("username")).first()
     teammember = TeamMember.query.filter_by(UserId=user.UserId, TeamId=teamid).first()
+
+    if not teamid:
+        flash("Missing required fields")
+        return redirect(url_for("account", page="teams"))
     
     if teammember.role.RoleName == "owner":
         members = TeamMember.query.filter_by(TeamId=teamid).count()
@@ -393,6 +401,10 @@ def api_create_virtualmachine():
     vm_type = request.form.get("vmtype")
     vm_description = request.form.get("description")
 
+    if not vm_name or not vm_type:
+        flash("Missing fields.", "error")
+        return redirect(url_for("virtualmachine"))
+
     if Service.query.filter_by(ServiceName=vm_name).all():
         flash("Service name already exists", "error")
         return redirect(url_for("virtualmachine"))
@@ -440,6 +452,10 @@ def api_vm_action():
     action = request.form.get("action")
     vm_id = request.form.get("serverid")
     service_name = request.form.get("servicename")
+
+    if not action or not vm_id or not service_name:
+        flash("Missing fields.", "error")
+        return redirect(url_for("virtualmachine"))
 
     service = Service.query.filter_by(ServiceName=service_name).first()
 

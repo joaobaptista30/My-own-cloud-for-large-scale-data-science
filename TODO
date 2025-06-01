@@ -7,17 +7,15 @@ Services needed:
     [X] team management (add member | change role | <missing> remove member)
     [] account management functionalities
 
-[X] - Provision of computational resources that is elastic (shrinks and grows as needed)
-    [X] create VM (allow to associate a team to it)
+[X] - Provision of computational resources that is elastic (shrinks and grows as needed) (nova)
+    [X] create/delete VM
     [X] shutdown and start VM
-    [X] delete VM
     [X] display ssh comand for VM connection
-    [X] automate the elasticy to grows and shrink as needed (also make it shutdown after 5 min of inactivity)
+    [X] automate the elasticy to grows and shrink as needed (also make it shutdown after 5 min of inactivity) (ceilometer to check usage)
 
-[] - Disk storage
-    []
-    []
-    []
+[] - Disk storage (cinderv3)
+    [] create/delete Disk
+    [] attach/detach volume from VM
 
 [] - Container service
     []
