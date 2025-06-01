@@ -82,9 +82,12 @@ def virtualmachine():
     
     user = User.query.filter_by(UserName=session.get("username")).first()
     teams = (Team.query.join(TeamMember).filter(TeamMember.UserId == user.UserId).all())
-    services = Service.query.filter_by(TeamId=session['teamid_selected'], ServiceType='VM').all()
 
-    return render_template('virtualmachine.html', teams=teams, services=services)
+    if session.get('teamid_selected'): 
+        services = Service.query.filter_by(TeamId=session.get('teamid_selected'), ServiceType='VM').all()
+        return render_template('virtualmachine.html', teams=teams, services=services)
+
+    return render_template('virtualmachine.html', teams=teams)
 
 @APP.route('/diskstorage')
 def diskstorage():
@@ -263,6 +266,9 @@ def api_select_team():
     if team_id:
         team = Team.query.get(team_id)
         session['teamid_selected'] = team.TeamId
+        user = User.query.filter_by(UserName=session["username"]).first()
+        team_member_data = TeamMember.query.filter_by(UserId=user.UserId, TeamId=team_id).first()
+        session["user_role"] = Role.query.filter_by(RoleId=team_member_data.RoleId).first().RoleName
 
     return {"redirect": url_for("virtualmachine")}, 200
 
@@ -328,20 +334,33 @@ def api_vm_action():
 
     server = conn.compute.get_server(vm_id)
     if action == "start":
+        if session["user_role"] == "member":
+            flash("Not authorized", "error")
+            return redirect(url_for("virtualmachine", vm_updated="true"))
+        
         service.ServiceConfig["server_status"] = "ACTIVE"
         db.session.commit()
         conn.compute.start_server(server)
-        #flash("Starting Virtual Machine successfully\nMay take a while", "success")
+        flash("Starting Virtual Machine successfully\nMay take a while", "success")
 
     elif action == "stop":
+        if session["user_role"] == "member":
+            flash("Not authorized", "error")
+            return redirect(url_for("virtualmachine", vm_updated="true"))
+        
         service.ServiceConfig["server_status"] = "SHUTOFF"
         db.session.commit()
         conn.compute.stop_server(server)
-        #flash("Stopping Virtual Machine successfully\nMay take a while", "success")
+        flash("Stopping Virtual Machine successfully\nMay take a while", "success")
 
     elif action == "delete":
+        if session["user_role"] != "owner":
+            flash("Not authorized", "error")
+            return redirect(url_for("virtualmachine", vm_updated="true"))
+        
         conn.compute.delete_server(server)
         db.session.delete(service)
+        db.session.commit()
 
     return redirect(url_for("virtualmachine", vm_updated="true"))
 

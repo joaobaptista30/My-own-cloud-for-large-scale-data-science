@@ -4,15 +4,15 @@ Services needed:
     [X] login/register page
     [X] login/register and logout functions
     [X] dashboard page
-    [X] team management
+    [X] team management (add member | change role | <missing> remove member)
     [] account management functionalities
 
 [] - Provision of computational resources that is elastic (shrinks and grows as needed)
-    [] create VM (allow to associate a team to it)
-    [] delete VM
+    [X] create VM (allow to associate a team to it)
+    [X] shutdown and start VM
+    [X] delete VM
+    [X] display ssh comand for VM connection
     [] automate the elasticy to grows and shrink as needed (also make it shutdown after 5 min of inactivity)
-    []
-    []
     []
 
 [] - Disk storage

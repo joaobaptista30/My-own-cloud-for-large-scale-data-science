@@ -55,21 +55,21 @@
                     <td>ssh cirros@{{ service.ServiceConfig.server_ip }}</td>
                     <td style="text-align: center; vertical-align: middle;">
                         <div class="action_buttons"> 
-                            <form method="POST" action="/api/vmaction" style="margin: 0;">
+                            <form method="POST" action="/api/vmaction" style="margin: 0; display: {{ 'none' if session['user_role']=='member' else 'block' }}">
                                 <input type="hidden" name="servicename" value="{{ service.ServiceName }}">
                                 <input type="hidden" name="serverid" value="{{ service.ServiceConfig.server_id }}">
                                 <input type="hidden" name="action" value="start">
                                 <button type="submit">Start</button>
                             </form>
 
-                            <form method="POST" action="/api/vmaction" style="margin: 0;">
+                            <form method="POST" action="/api/vmaction" style="margin: 0; display: {{ 'none' if session['user_role']=='member' else 'block' }}">
                                 <input type="hidden" name="servicename" value="{{ service.ServiceName }}">
                                 <input type="hidden" name="serverid" value="{{ service.ServiceConfig.server_id }}">
                                 <input type="hidden" name="action" value="stop">
                                 <button type="submit">ShutDown</button>
                             </form>
 
-                            <form method="POST" action="/api/vmaction" style="margin: 0;">
+                            <form method="POST" action="/api/vmaction" style="margin: 0; display: {{ 'none' if session['user_role']!='owner' else 'block' }}">
                                 <input type="hidden" name="servicename" value="{{ service.ServiceName }}">
                                 <input type="hidden" name="serverid" value="{{ service.ServiceConfig.server_id }}">
                                 <input type="hidden" name="action" value="delete">
