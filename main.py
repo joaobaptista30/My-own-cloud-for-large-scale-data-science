@@ -1,4 +1,5 @@
 import os
+import logging
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -16,6 +17,8 @@ from config import Config
 
 APP = Flask(__name__)
 APP.config.from_object(Config)
+
+logger = logging.getLogger(__name__)
 
 # connection to microstack server for resources alocation
 conn = openstack.connect(cloud='microstack')
@@ -62,6 +65,7 @@ def get_vm_metrics(server_id):
         memory_usage = conn.telemetry.get_sample('memory.usage', server_id) 
         return {'cpu': cpu_usage, 'memory': memory_usage}
     except Exception as e:
+        logger.error(f"Error fetching metrics for server {server_id}: {e}")
         return {'cpu': 0, 'memory': 0}
 
 def scale_vm(server_id, current_flavor, scale_direction):
@@ -87,6 +91,7 @@ def scale_vm(server_id, current_flavor, scale_direction):
         server = conn.compute.get_server(server_id)
         conn.compute.resize_server(server, new_flavor_id)
         conn.compute.confirm_resize(server)
+        logger.info(f"Scaled VM {server_id} to {new_flavor}")
         
         # Update service config in database
         service = Service.query.filter_by(ServiceName=server.name).first()
@@ -95,6 +100,7 @@ def scale_vm(server_id, current_flavor, scale_direction):
             db.session.commit()
         return True
     except Exception as e:
+        logger.error(f"Error scaling VM {server_id}: {e}")
         return False
 
 def check_vm_activity():
@@ -124,7 +130,9 @@ def check_vm_activity():
                     service = Service.query.filter_by(ServiceName=server.name).first()
                     service.ServiceConfig['server_status'] = 'SHUTOFF'
                     db.session.commit()
+                    logger.info(f"Server: {service.ServiceName} shutdown")
                 except Exception as e:
+                    logger.error(f"Error shutting down VM {server_id}: {e}")
 
         # Auto-scaling logic
         current_flavor = service.ServiceConfig['server_size']
