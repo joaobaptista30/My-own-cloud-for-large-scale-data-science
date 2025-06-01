@@ -240,6 +240,7 @@ def api_register():
     session.permanent = True
     session["token"] = token
     session["username"] = username
+    logger.info(f"{username} register")
     
     return redirect(url_for("account", page="acc"))
 
@@ -258,12 +259,14 @@ def api_login():
     session.permanent = True
     session["token"] = token
     session["username"] = user.UserName
+    logger.info(f"{user.UserName} loggin")
 
     return redirect(url_for("account", page="acc"))
 
 
 @APP.route('/api/logout')
 def api_logout():
+    logger.info(f"{session["username"]} logout")
     session.clear()
     return redirect(url_for("index"))
 
@@ -291,6 +294,7 @@ def api_create_team():
         newteammember = TeamMember(UserId=user.UserId, TeamId=newteam.TeamId, RoleId=1)
         db.session.add(newteammember)
         db.session.commit()
+        logger.info(f"{session["username"]} created team {newteam.TeamId}")
         
     except Exception as e:
         db.session.rollback()
@@ -311,10 +315,12 @@ def api_leave_team():
         if members == 1: # apenas 1 user na equipa
             team = Team.query.get(teamid)
             if team:
+                logger.info(f"{user.UserName} left and team: {team.TeamID} deleted for 0 users")
                 db.session.delete(team)
         else: # leave e promover novo user a owner
             next_owner = TeamMember.query.filter_by(TeamId=teamid).order_by(TeamMember.RoleId)[1]
             next_owner.RoleId = 1
+            logger.info(f"{user.UserName} left team {team.TeamId} and user: {next_owner.UserId}(Id) promoted to new owner")
 
     db.session.delete(teammember)
     db.session.commit()
@@ -341,6 +347,7 @@ def api_add_teammember():
     userrole = TeamMember.query.filter_by(UserId=current_user.UserId, TeamId=teamid).first()
     if userrole.RoleId == 3:
         flash("You don't have permission to add members.", "error")
+        logger.warning(f"user: {current_user.UserName} tried to edit teammember for team {team.TeamID} but does not have permission")
         return redirect(url_for("account", page="teams"))
 
     user = User.query.filter_by(UserName=username).first()
@@ -352,11 +359,13 @@ def api_add_teammember():
     if existing_member:
         existing_member.RoleId = role
         db.session.commit()
+        logger.info(f"user: {current_user.UserName} edited {user.UserName} role in team {team.TeamID} to {role}")
         return redirect(url_for("account", page="teams"))
 
     new_member = TeamMember(UserId=user.UserId, TeamId=teamid, RoleId=role)
     db.session.add(new_member)
     db.session.commit()
+    logger.info(f"user: {current_user.UserName} added {new_member.UserName} in team {team.TeamID} with role {role}")
 
     flash("User added successfully.", "success")
     return redirect(url_for("account", page="teams"))
@@ -373,6 +382,7 @@ def api_select_team():
         user = User.query.filter_by(UserName=session["username"]).first()
         team_member_data = TeamMember.query.filter_by(UserId=user.UserId, TeamId=team_id).first()
         session["user_role"] = Role.query.filter_by(RoleId=team_member_data.RoleId).first().RoleName
+        logger.info(f"{session["username"]} is working in team {team_id}")
 
     return {"redirect": url_for("virtualmachine")}, 200
 
@@ -419,6 +429,7 @@ def api_create_virtualmachine():
     service_created = Service(ServiceName=vm_name, ServiceType="VM", ServiceConfig=server_config, TeamId=session['teamid_selected'])
     db.session.add(service_created)
     db.session.commit()
+    logger.info(f"user {session["username"]} created VM: {server.name} for team {session['teamid_selected']}")
 
     flash("Virtual Machine created successfully", "success")
     return redirect(url_for("virtualmachine", vm_created="true"))
@@ -440,31 +451,37 @@ def api_vm_action():
     if action == "start":
         if session["user_role"] == "member":
             flash("Not authorized", "error")
+            logger.error(f"user {session["username"]} not authorized to start VM: {server.name}")
             return redirect(url_for("virtualmachine", vm_updated="true"))
         
         service.ServiceConfig["server_status"] = "ACTIVE"
         db.session.commit()
         conn.compute.start_server(server)
         flash("Starting Virtual Machine successfully\nMay take a while", "success")
+        logger.info(f"user {session["username"]} | started VM {server.name}")
 
     elif action == "stop":
         if session["user_role"] == "member":
             flash("Not authorized", "error")
+            logger.error(f"user {session["username"]} not authorized to stop VM: {server.name}")
             return redirect(url_for("virtualmachine", vm_updated="true"))
         
         service.ServiceConfig["server_status"] = "SHUTOFF"
         db.session.commit()
         conn.compute.stop_server(server)
         flash("Stopping Virtual Machine successfully\nMay take a while", "success")
+        logger.info(f"user {session["username"]} | stoped VM {server.name}")
 
     elif action == "delete":
         if session["user_role"] != "owner":
             flash("Not authorized", "error")
+            logger.error(f"user {session["username"]} not authorized to delete VM: {server.name}")
             return redirect(url_for("virtualmachine", vm_updated="true"))
         
         conn.compute.delete_server(server)
         db.session.delete(service)
         db.session.commit()
+        logger.info(f"user {session["username"]} | deleted VM {server.name}")
 
     return redirect(url_for("virtualmachine", vm_updated="true"))
 

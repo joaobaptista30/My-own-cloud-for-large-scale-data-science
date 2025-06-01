@@ -7,7 +7,7 @@ Services needed:
     [X] team management (add member | change role | <missing> remove member)
     [] account management functionalities
 
-[] - Provision of computational resources that is elastic (shrinks and grows as needed)
+[X] - Provision of computational resources that is elastic (shrinks and grows as needed)
     [X] create VM (allow to associate a team to it)
     [X] shutdown and start VM
     [X] delete VM
