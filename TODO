@@ -12,8 +12,7 @@ Services needed:
     [X] shutdown and start VM
     [X] delete VM
     [X] display ssh comand for VM connection
-    [] automate the elasticy to grows and shrink as needed (also make it shutdown after 5 min of inactivity)
-    []
+    [X] automate the elasticy to grows and shrink as needed (also make it shutdown after 5 min of inactivity)
 
 [] - Disk storage
     []

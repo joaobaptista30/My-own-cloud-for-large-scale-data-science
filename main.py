@@ -9,7 +9,7 @@ import bcrypt
 import jwt
 import datetime
 import openstack
-import time
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from config import Config
 
@@ -17,12 +17,17 @@ from config import Config
 APP = Flask(__name__)
 APP.config.from_object(Config)
 
+# connection to microstack server for resources alocation
 conn = openstack.connect(cloud='microstack')
 
+# database connection 
 db.init_app(APP)
 with APP.app_context():
     db.create_all()
-    
+
+# Initialize scheduler for backgroud checks, VM usage, etc
+scheduler = BackgroundScheduler()
+scheduler.start()    
     
 # generate 24h valid token 
 def generate_token(user_id):
@@ -40,6 +45,97 @@ def verify_token(token):
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
         return None
 
+# Track last activity for each VM
+vm_last_activity = {}
+
+# Auto-scaling thresholds
+CPU_SCALE_UP_THRESHOLD = 80  # % CPU usage
+CPU_SCALE_DOWN_THRESHOLD = 20  # % CPU usage
+INACTIVITY_TIMEOUT = 300  # 5 minutes in seconds
+
+def get_vm_metrics(server_id):
+    """
+    Fetch VM metrics (CPU/memory usage) from OpenStack.
+    """
+    try:
+        cpu_usage = conn.telemetry.get_sample('cpu_util', server_id)
+        memory_usage = conn.telemetry.get_sample('memory.usage', server_id) 
+        return {'cpu': cpu_usage, 'memory': memory_usage}
+    except Exception as e:
+        return {'cpu': 0, 'memory': 0}
+
+def scale_vm(server_id, current_flavor, scale_direction):
+    """
+    Scale VM up or down by resizing to a different flavor.
+    """
+
+    FLAVOR_MAP = {'small': {'id': 'm1.small', 'ram': 1024, 'cpu': 2},
+                  'medium': {'id': 'm1.medium', 'ram': 4096, 'cpu': 4},
+                  'large': {'id': 'm1.large', 'ram': 8192, 'cpu': 8}}
+    FLAVOR_ORDER = ['small', 'medium', 'large']  # Order for scaling
+
+    current_flavor_idx = FLAVOR_ORDER.index(current_flavor)
+    if scale_direction == 'up' and current_flavor_idx < len(FLAVOR_ORDER) - 1:
+        new_flavor = FLAVOR_ORDER[current_flavor_idx + 1]
+    elif scale_direction == 'down' and current_flavor_idx > 0:
+        new_flavor = FLAVOR_ORDER[current_flavor_idx - 1]
+    else:
+        return False  # No scaling possible
+
+    try:
+        new_flavor_id = FLAVOR_MAP[new_flavor]['id']
+        server = conn.compute.get_server(server_id)
+        conn.compute.resize_server(server, new_flavor_id)
+        conn.compute.confirm_resize(server)
+        
+        # Update service config in database
+        service = Service.query.filter_by(ServiceName=server.name).first()
+        if service:
+            service.ServiceConfig['server_size'] = new_flavor
+            db.session.commit()
+        return True
+    except Exception as e:
+        return False
+
+def check_vm_activity():
+    """
+    Check all VMs for activity and scaling needs.
+    Shutdown after 5 minutes of inactivity.
+    """
+
+    current_time = datetime.datetime.now(datetime.timezone.utc)
+    for server_summary in conn.compute.servers():
+        server = conn.compute.get_server(server_summary.id)
+
+        if server.status != 'ACTIVE': # VM not running
+            continue
+
+        server_id = server.id
+        metrics = get_vm_metrics(server_id)
+        cpu_usage = metrics['cpu']
+
+        if cpu_usage > 10: # Update last activity time if VM is active
+            vm_last_activity[server_id] = current_time
+        else: # if server inactive for +300sec (5min) shutdown
+            last_activity = vm_last_activity.get(server_id, current_time)
+            if (current_time - last_activity).total_seconds() > INACTIVITY_TIMEOUT:
+                try:
+                    conn.compute.stop_server(server)
+                    service = Service.query.filter_by(ServiceName=server.name).first()
+                    service.ServiceConfig['server_status'] = 'SHUTOFF'
+                    db.session.commit()
+                except Exception as e:
+
+        # Auto-scaling logic
+        current_flavor = service.ServiceConfig['server_size']
+        if cpu_usage > CPU_SCALE_UP_THRESHOLD:
+            scale_vm(server_id, current_flavor, 'up')
+        elif cpu_usage < CPU_SCALE_DOWN_THRESHOLD:
+            scale_vm(server_id, current_flavor, 'down')
+
+
+# Schedule for routine checks 
+scheduler.add_job(check_vm_activity, 'interval', minutes=1)
 
 
 ### pages endpoint ###
