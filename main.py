@@ -383,6 +383,7 @@ def api_add_teammember():
 def api_select_team():
     data = request.get_json()
     team_id = data.get('team_id')
+    url_req = data.get('url_req')
 
     if team_id:
         team = Team.query.get(team_id)
@@ -392,7 +393,7 @@ def api_select_team():
         session["user_role"] = Role.query.filter_by(RoleId=team_member_data.RoleId).first().RoleName
         logger.info(f"{session["username"]} is working in team {team_id}")
 
-    return {"redirect": url_for("virtualmachine")}, 200
+    return {"redirect": url_for(url_req)}, 200
 
 
 @APP.route('/api/createvirtualmachine', methods=["POST"])

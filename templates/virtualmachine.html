@@ -51,7 +51,7 @@
                 <tr>
                     <td>{{ service.ServiceName }}</td>
                     <td> {{ service.ServiceConfig.server_status }} </td>
-                    <td>{{ service.ServiceConfig.server_description if service.ServiceConfig.server_description else "No description" }}</td>
+                    <td>{{ service.ServiceConfig.server_description if service.ServiceConfig.server_description!="" else "No description" }}</td>
                     <td>ssh cirros@{{ service.ServiceConfig.server_ip }}</td>
                     <td style="text-align: center; vertical-align: middle;">
                         <div class="action_buttons"> 
@@ -94,7 +94,7 @@
             fetch('/api/selectteam', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ team_id: teamId })
+                body: JSON.stringify({ team_id: teamId, url_req: "virtualmachine" })
             })
             .then(response => response.json())
             .then(data => {

@@ -364,7 +364,7 @@
     }
 }
 
-.vm_page{
+.vm_page, .disk_page{
     width: 60%;
     display: flex;
     flex-direction: column;
@@ -381,7 +381,7 @@
             border-radius: 6px;
         }
 
-        .create_vm_button{
+        .create_vm_button, .create_disk_button{
             font-size: 20px;
             background: var(--lightorange);
             color: var(--background);
@@ -394,7 +394,7 @@
             cursor: pointer;
         }
 
-        .vm_create{
+        .vm_create, .disk_create{
             display: none;
             position: fixed;
             z-index: 2;
@@ -456,7 +456,7 @@
     }
 
     .info{
-        .vm_table {
+        table {
             width: 100%;
             border-collapse: collapse;
             table-layout: auto;
@@ -476,7 +476,7 @@
 
         }
 
-        .vm_table th, .vm_table td {
+        table th, table td {
             border: 2px solid var(--darkerblue);
             padding: 10px;
             text-align: left;
