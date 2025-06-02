@@ -216,10 +216,18 @@ def containers():
     return render_template('underdev.html')
 
 @APP.route('/database')
-def databased():
+def database():
     if not session.get("token") or not verify_token(session.get("token")):
         return redirect(url_for("login"))
-    return render_template('underdev.html')
+
+    user = User.query.filter_by(UserName=session.get("username")).first()
+    teams = Team.query.join(TeamMember).filter(TeamMember.UserId == user.UserId).all()
+
+    if session.get('teamid_selected'):
+        services = Service.query.filter_by(TeamId=session.get('teamid_selected'), ServiceType='DATABASE').all()
+        return render_template('database.html', teams=teams, services=services)
+
+    return render_template('database.html', teams=teams)
     
 
 
@@ -636,6 +644,89 @@ def api_disk_action():
             return redirect(url_for("diskstorage", disk_updated="false"))
         
     return redirect(url_for("diskstorage", disk_updated="true"))
+
+
+@APP.route('/api/createdatabase', methods=["POST"])
+def api_create_database():
+
+    db_name = request.form.get("dbname")
+    db_description = request.form.get("description")
+    team_id = session.get("teamid_selected")
+
+    db_type = "mysql" 
+    db_flavor = "medium"
+
+    if not db_name or not team_id:
+        flash("Missing fields.", "error")
+        return redirect(url_for("database"))
+
+    if Service.query.filter_by(ServiceName=db_name).first():
+        flash("Database name already exists", "error")
+        return redirect(url_for("database"))
+
+
+    flavor = conn.compute.find_flavor(f"m1.{db_flavor}")
+    datastore = {'type': db_type}
+
+    db_instance = conn.database.create_instance(
+        name=db_name,
+        flavor_id=flavor.id,
+        datastore=datastore,
+        description=db_description
+    )
+    conn.database.wait_for_instance(db_instance, status='ACTIVE', interval=2, wait=600)
+
+    db_config = {
+        "db_id": db_instance.id,
+        "db_description": db_description,
+        "db_status": db_instance.status,
+        "connection_string": db_instance.connection_string
+    }
+
+    service = Service(ServiceName=db_name, ServiceType="DATABASE", ServiceConfig=db_config, TeamId=team_id)
+    db.session.add(service)
+    db.session.commit()
+    logger.info(f"user {session['username']} created Database: {db_name} for team {team_id}")
+
+    flash("Database created successfully", "success")
+    return redirect(url_for("database", db_created="true"))
+
+
+@APP.route('/api/dbaction', methods=["POST"])
+def api_database_action():
+
+    db_id = request.form.get("db_id")
+    service_name = request.form.get("servicename")
+    action = request.form.get("action")
+
+    if not action or not db_id or not service_name:
+        flash("Missing fields.", "error")
+        return redirect(url_for("database"))
+
+    service = Service.query.filter_by(ServiceName=service_name).first()
+    if not service:
+        flash("Database not found", "error")
+        return redirect(url_for("database"))
+
+    user = User.query.filter_by(UserName=session.get("username")).first()
+    team_member = TeamMember.query.filter_by(UserId=user.UserId, TeamId=session.get("teamid_selected")).first()
+
+    if action == "delete":
+        if team_member.RoleId != 1:
+            flash("Not authorized", "error")
+            return redirect(url_for("database", db_updated="false"))
+
+        try:
+            conn.database.delete_instance(db_id)
+            db.session.delete(service)
+            db.session.commit()
+            logger.info(f"user: {user.UserName} deleted Database: {service.ServiceName}")
+            flash("Database deleted successfully", "success")
+        except Exception as e:
+            logger.error(f"Error deleting database {service_name}: {e}")
+            flash(f"Error deleting database: {str(e)}", "error")
+
+    return redirect(url_for("database", db_updated="true"))
 
 
 '''
