@@ -364,7 +364,7 @@
     }
 }
 
-.vm_page, .disk_page, .db_page{
+.vm_page, .disk_page, .container_page, .db_page{
     width: 60%;
     display: flex;
     flex-direction: column;
@@ -381,7 +381,7 @@
             border-radius: 6px;
         }
 
-        .create_vm_button, .create_disk_button, .create_db_button{
+        .create_vm_button, .create_disk_button, .create_container_button, .create_db_button{
             font-size: 20px;
             background: var(--lightorange);
             color: var(--background);
@@ -394,7 +394,7 @@
             cursor: pointer;
         }
 
-        .vm_create, .disk_create, .db_create{
+        .vm_create, .disk_create, .container_create, .db_create{
             display: none;
             position: fixed;
             z-index: 2;

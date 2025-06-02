@@ -17,10 +17,10 @@ Services needed:
     [X] create/delete Disk
     [X] attach/detach volume from VM
 
-[] - Container service
-    []
-    []
-    []
+[X] - Container service (each team will have a special vm to alocate docker containers)
+    [X] auto create VM for team to host containers if not existing already
+    [X] create/delete/start/stop Container
+    [X] auto scale VM as needed
 
 [X] - Database service (trove)
     [X] create/delete db

@@ -6,6 +6,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, flash
 from db_tables import db, User, Team, TeamMember, Role, Service
 from sqlalchemy import or_, text
+import docker
 import bcrypt
 import jwt
 import datetime
@@ -124,7 +125,7 @@ def check_vm_activity():
             vm_last_activity[server_id] = current_time
         else: # if server inactive for +300sec (5min) shutdown
             last_activity = vm_last_activity.get(server_id, current_time)
-            if (current_time - last_activity).total_seconds() > INACTIVITY_TIMEOUT:
+            if (current_time - last_activity).total_seconds() > INACTIVITY_TIMEOUT and "container" not in server.name :
                 try:
                     conn.compute.stop_server(server)
                     service = Service.query.filter_by(ServiceName=server.name).first()
@@ -213,7 +214,15 @@ def containers():
     if not session.get("token") or not verify_token(session.get("token")):
         return redirect(url_for("login"))
     
-    return render_template('underdev.html')
+    user = User.query.filter_by(UserName=session.get("username")).first()
+    teams = Team.query.join(TeamMember).filter(TeamMember.UserId == user.UserId).all()
+    
+    if session.get('teamid_selected'):
+        services = Service.query.filter_by(TeamId=session.get('teamid_selected'), ServiceType='CONTAINER').all()
+        vm = Service.query.filter_by(TeamId=session.get('teamid_selected'), ServiceType='VM_CONTAINER').first()
+        return render_template('containers.html', teams=teams, services=services, vm=vm)
+    
+    return render_template('containers.html', teams=teams)
 
 @APP.route('/database')
 def database():
@@ -646,6 +655,165 @@ def api_disk_action():
     return redirect(url_for("diskstorage", disk_updated="true"))
 
 
+@APP.route('/api/createcontainer', methods=["POST"])
+def api_create_container():
+    container_name = request.form.get("containername")
+    image = "nginx:latest"
+    ports = "80:80".split(",")
+    team_id = session.get("teamid_selected")
+
+    if not container_name or not team_id:
+        flash("Missing fields.", "error")
+        return redirect(url_for("containers"))
+    
+    if Service.query.filter_by(ServiceName=container_name).first():
+        flash("Container name already exists", "error")
+        return redirect(url_for("containers"))
+
+    vm_container_service = Service.query.filter_by(ServiceType="VM_CONTAINER", TeamId=team_id).first()
+
+    if not vm_container_service: # create VM to host containers if it doesn't exist
+        network = conn.network.find_network('test')
+
+        server = conn.compute.create_server(
+            name=f"container_vm_{team_id}",
+            image_id=conn.compute.find_image('cirros').id,
+            flavor_id=conn.compute.find_flavor(f"m1.medium").id,
+            networks=[{"uuid": network.id}],
+            key_name="mykey"
+        )
+        server = conn.compute.wait_for_server(server, status='ACTIVE', failures=['ERROR'], interval=2, wait=300)
+        
+        # Allocate and associate a floating IP
+        external_network = conn.network.find_network('external')
+        floating_ip = conn.network.create_ip(floating_network_id=external_network.id)
+
+        ports = list(conn.network.ports(device_id=server.id))
+        server_port = ports[0]
+        conn.network.update_ip(floating_ip, port_id=server_port.id)
+
+        server_config = {"server_description": f"vm for container of team {team_id}",
+                        "server_id": server.id,
+                        "server_status": server.status,
+                        "server_size": "medium",
+                        "server_ip": floating_ip.floating_ip_address}
+
+        vm_container_service = Service(ServiceName=f"container_vm_{team_id}", ServiceType="VM_CONTAINER", ServiceConfig=server_config, TeamId=session['teamid_selected'])
+        db.session.add(vm_container_service)
+        db.session.commit()
+
+    
+    # Get VM's floating IP
+    vm_ip = vm_container_service.ServiceConfig["server_ip"]
+    vm_id = vm_container_service.ServiceConfig["server_id"]
+
+    client = docker.DockerClient(base_url=f"tcp://{vm_ip}:2375")
+    if not client:
+        flash("error creating container","error")
+        return redirect(url_for("containers"))
+
+
+    # Map ports (e.g., "80:80" means host_port:container_port)
+    port_mappings = {f"{port.split(':')[1]}/tcp": int(port.split(':')[0]) for port in ports}
+    container = client.containers.run(
+        image=image,
+        name=container_name,
+        ports=port_mappings,
+        detach=True
+    )
+
+    container_config = {
+        "container_id": container.id,
+        "container_image": image,
+        "container_status": container.status,
+        "container_ports": ports,
+        "vm_id": vm_id
+    }
+    service = Service(ServiceName=container_name, ServiceType="CONTAINER", ServiceConfig=container_config, TeamId=team_id)
+    db.session.add(service)
+    db.session.commit()
+    logger.info(f"Created container {container_name} for team {team_id}")
+    client.close()
+    
+    return redirect(url_for("containers", container_created="true"))
+
+
+@APP.route('/api/containeraction', methods=["POST"])
+def api_container_action():
+    action = request.form.get("action")
+    container_id = request.form.get("containerid")
+    service_name = request.form.get("servicename")
+    vm_id = request.form.get("vmid")
+    team_id = session.get("teamid_selected")
+
+    if not action or not container_id or not service_name or not vm_id:
+        flash("Missing fields.", "error")
+        return redirect(url_for("containers"))
+
+    service = Service.query.filter_by(ServiceName=service_name, TeamId=team_id).first()
+    if not service:
+        flash("Container not found", "error")
+        return redirect(url_for("containers"))
+
+    vm_service = Service.query.filter_by(ServiceType="VM_CONTAINER", TeamId=team_id).first()
+    if not vm_service:
+        flash("VM not found", "error")
+        return redirect(url_for("containers"))
+    
+    vm_ip = vm_service.ServiceConfig["server_ip"]
+    user_role = session.get("user_role")
+
+    client = docker.DockerClient(base_url=f"tcp://{vm_ip}:2375")
+    if not client:
+        flash("Docker client not fund, contact admin", "error")
+        return redirect(url_for("containers"))
+    
+    if action == "start":
+        if user_role == "member":
+            client.close()
+            flash("Not authorized", "error")
+            return redirect(url_for("containers"))
+        
+        container = client.containers.get(container_id)
+        container.start()
+        service = Service.query.filter_by(ServiceConfig={"container_id": container_id}).first()
+        if service:
+            service.ServiceConfig["container_status"] = "running"
+            db.session.commit()
+        logger.info(f"Started container {container_id}")
+
+    elif action == "stop":
+        if user_role == "member":
+            client.close()
+            flash("Not authorized", "error")
+            return redirect(url_for("containers"))
+        
+        container = client.containers.get(container_id)
+        container.stop()
+        service = Service.query.filter_by(ServiceConfig={"container_id": container_id}).first()
+        if service:
+            service.ServiceConfig["container_status"] = "stopped"
+            db.session.commit()
+        logger.info(f"Stopped container {container_id}")
+
+    elif action == "delete":
+        if user_role != "owner":
+            client.close()
+            flash("Not authorized", "error")
+            return redirect(url_for("containers"))
+        
+        container = client.containers.get(container_id)
+        container.remove(force=True)  # Stop before removing
+        service = Service.query.filter_by(ServiceConfig={"container_id": container_id}, TeamId=team_id).first()
+        if service:
+            db.session.delete(service)
+            db.session.commit()
+        logger.info(f"Deleted container {container_id} for team {team_id}")
+
+    client.close()
+    return redirect(url_for("containers", container_updated="true"))
+
+
 @APP.route('/api/createdatabase', methods=["POST"])
 def api_create_database():
 
@@ -727,11 +895,3 @@ def api_database_action():
             flash(f"Error deleting database: {str(e)}", "error")
 
     return redirect(url_for("database", db_updated="true"))
-
-
-'''
-para ver todas as equipas de 1 user
-for membership in user.teams:
-    print(membership.team.TeamName)  # Follows `teams = db.relationship('TeamMember')`
-
-'''

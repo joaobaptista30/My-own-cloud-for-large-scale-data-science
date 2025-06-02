@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block body %}
+
+<div class="container_page">
+    <h1>Create and Manage Containers</h1>
+
+    <div class="team">
+        <span style="font-size: 1.5em;font-weight: bold;margin-right: 10px;">Team:</span>
+        <select id="team-select" onchange="selectTeam(this)">
+            <option value="" {% if not session.get("teamid_selected") %}selected{% endif %} style='display: {{ "none" if session.get("teamid_selected") else "block" }};'>-- Select team --</option>
+            {% for team in teams %}
+            <option value="{{ team.TeamId }}" {% if session.get("teamid_selected") == team.TeamId %}selected{% endif %}>{{ team.TeamName }}</option>
+            {% endfor %}
+        </select>
+        <button id="create_container_button" class="create_container_button" style='display: {{ "block" if session.get("teamid_selected") else "none" }};'> &plus; New Container</button>
+
+        <div class="container_create" style="display: none;">
+            <div class="content">
+                <span class="close">&times;</span> <br>
+                <form id="create_container_form" method="POST" action="/api/createcontainer">
+                    <label for="containername">Container Name: </label>
+                    <input type="text" name="containername" placeholder="Name" required />
+                    <button class="submit_button" type="submit">Create</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="info">
+        <table class="container_table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Connection</th>
+                <th style="text-align: center;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for service in services %}
+                <tr>
+                    <td>{{ service.ServiceName }}</td>
+                    <td>{{ service.ServiceConfig.container_status }}</td>
+                    <td>http://{{ vm.ServiceConfig.server_ip }}:80</td>
+                    <td style="text-align: center; vertical-align: middle;">
+                        <div class="action_buttons"> 
+                            <form method="POST" action="/api/containeraction" style="margin: 0; display: {{ 'none' if session['user_role']=='member' else 'block' }}">
+                                <input type="hidden" name="containerid" value="{{ service.ServiceConfig.container_id }}">
+                                <input type="hidden" name="servicename" value="{{ service.ServiceName }}">
+                                <input type="hidden" name="vmid" value="{{ service.ServiceConfig.vm_id }}">
+                                <button type="submit" name="action" value="start">Start</button>
+                                <button type="submit" name="action" value="stop">Stop</button>
+                                <button type="submit" name="action" value="delete">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    function selectTeam(selectElement) {
+        const teamId = selectElement.value;
+        if (teamId != ""){
+            document.getElementsByClassName("create_container_button")[0].style.display = "block";
+            selectElement.querySelector('option[value=""]').style.display = "none";
+            
+            fetch('/api/selectteam', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ team_id: teamId, url_req: "containers" })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('container_created') === 'true' || urlParams.get('vm_updated') === 'true') {
+            document.getElementsByClassName("container_create")[0].style.display = "none";
+            // Clean up the URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    });
+
+
+    document.getElementsByClassName("create_container_button")[0].onclick = function() {
+        document.getElementsByClassName("container_create")[0].style.display = "block";
+    }
+    document.getElementsByClassName("close")[0].onclick = function() {
+        document.getElementsByClassName("container_create")[0].style.display = "none";
+    }
+    var login_box = document.querySelector(".container_create");
+    window.onclick = function(event) {
+        if (event.target == login_box) {
+            login_box.style.display = "none";
+        }
+    }
+
+</script>
+
+
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div id="flash-popup" class="flash-popup">
+      {% for category, message in messages %}
+        <div class="flash-message {{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+    <script>
+      const flashPopup = document.getElementById("flash-popup");
+      if (flashPopup) {
+        flashPopup.style.display = "block";
+        setTimeout(() => {
+          flashPopup.style.opacity = "0";
+          setTimeout(() => flashPopup.style.display = "none", 500);
+        }, 3000);
+      }
+    </script>
+  {% endif %}
+{% endwith %}
+
+{% endblock %}
