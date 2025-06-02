@@ -58,7 +58,7 @@
                     <td>{{ service.ServiceConfig.volume_status }}</td>
                     <td>{{ service.ServiceConfig.volume_size }}</td>
                     <td>{{ service.ServiceConfig.server_description if service.ServiceConfig.server_description!="" else "No description" }}</td>
-                    <td>{{ service.ServiceConfig.attached_to or '---' }}</td>
+                    <td>{{ service.ServiceConfig.vm_name or '---' }}</td>
                     <td style="text-align: center; vertical-align: middle;">
                         <div class="action_buttons">
                             {% if service.ServiceConfig.volume_status == 'available' and session['user_role']!='member' %}
@@ -72,9 +72,9 @@
                                         </select>
                                         <button type="submit" name="action" value="attach">Attach</button>
                                 </form>
-                                <form method="POST" action="/api/diskaction" style="margin: 0;">
+                                <form method="POST" action="/api/diskaction" style="margin: 0;display: {{ 'none' if session['user_role']!='owner' else 'block' }}">
+                                    <input type="hidden" name="volumeid" value="{{ service.ServiceConfig.volume_id }}">
                                     <input type="hidden" name="servicename" value="{{ service.ServiceName }}">
-                                    <input type="hidden" name="serverid" value="{{ service.ServiceConfig.server_id }}">
                                     <input type="hidden" name="action" value="delete">
                                     <button type="submit">Delete</button>
                                 </form>

@@ -198,7 +198,15 @@ def diskstorage():
     if not session.get("token") or not verify_token(session.get("token")):
         return redirect(url_for("login"))
     
-    return render_template('underdev.html')
+    user = User.query.filter_by(UserName=session.get("username")).first()
+    teams = (Team.query.join(TeamMember).filter(TeamMember.UserId == user.UserId).all())
+
+    if session.get('teamid_selected'): 
+        services = Service.query.filter_by(TeamId=session.get('teamid_selected'), ServiceType='DISK').all()
+        vms = Service.query.filter_by(TeamId=session.get('teamid_selected'), ServiceType='VM').all()
+        return render_template('diskstorage.html', teams=teams, services=services, vms=vms)
+    
+    return render_template('diskstorage.html', teams=teams)
 
 @APP.route('/container')
 def containers():
@@ -420,7 +428,6 @@ def api_create_virtualmachine():
         key_name="mykey"
     )
 
-    # Wait until it's active
     server = conn.compute.wait_for_server(server, status='ACTIVE', failures=['ERROR'], interval=2, wait=300)
     
     # Allocate and associate a floating IP
@@ -430,8 +437,6 @@ def api_create_virtualmachine():
     ports = list(conn.network.ports(device_id=server.id))
     server_port = ports[0]
     conn.network.update_ip(floating_ip, port_id=server_port.id)
-
-
 
     server_config = {"server_description": vm_description,
                      "server_id": server.id,
@@ -501,6 +506,137 @@ def api_vm_action():
         logger.info(f"user {session["username"]} | deleted VM {server.name}")
 
     return redirect(url_for("virtualmachine", vm_updated="true"))
+
+
+@APP.route('/api/createdisk', methods=["POST"])
+def api_create_disk():
+
+    disk_name = request.form.get("diskname")
+    disk_size = request.form.get("disksize")
+    disk_description = request.form.get("description")
+    team_id = session.get("teamid_selected")
+
+    if not disk_name or not disk_size or not team_id:
+        flash("Missing fields.", "error")
+        return redirect(url_for("diskstorage"))
+
+    volume = conn.block_storage.create_volume(
+        name=disk_name,
+        size=disk_size,  # Size in GB
+        description=disk_description
+    )
+    conn.block_storage.wait_for_status(volume, status='available', interval=2, wait=300)
+    
+    volume_config = {
+        "volume_id": volume.id,
+        "volume_size": disk_size,
+        "volume_description": disk_description,
+        "volume_status": volume.status,
+        "attached_to": None,  # VM ID to fill when user attach
+        "vm_name": None # VM name that volume is attach
+    }
+    
+    service = Service(ServiceName=disk_name, ServiceType="DISK", ServiceConfig=volume_config, TeamId=team_id)
+    db.session.add(service)
+    db.session.commit()
+
+    return redirect(url_for("diskstorage", disk_created="true"))
+
+
+@APP.route('/api/diskaction', methods=["POST"])
+def api_disk_action():
+
+    action = request.form.get("action")
+    volume_id = request.form.get("volumeid")
+    service_name = request.form.get("servicename")
+    server_id = request.form.get("serverid")
+
+    if not action or not volume_id or not service_name:
+        flash("Missing fields.", "error")
+        return redirect(url_for("diskstorage"))
+
+    service = Service.query.filter_by(ServiceName=service_name).first()
+    if not service:
+        flash("Volume register not found in DB", "error")
+        return redirect(url_for("diskstorage"))
+
+    user = User.query.filter_by(UserName=session.get("username")).first()
+    team_member = TeamMember.query.filter_by(UserId=user.UserId, TeamId=session.get("teamid_selected")).first()
+
+    if action in ["attach", "detach"] and not server_id:
+        flash("Server ID required for this action", "error")
+        return redirect(url_for("diskstorage"))
+
+    if action == "attach":
+        if team_member.RoleId == 3:
+            flash("Not authorized", "error")
+            return redirect(url_for("diskstorage", disk_updated="false"))
+
+        volume = conn.block_storage.get_volume(volume_id)
+        server = conn.compute.get_server(server_id)
+        
+        # Attach volume to server
+        conn.compute.create_volume_attachment(server=server, volume_id=volume_id)
+        conn.block_storage.wait_for_status(volume, status='in-use', interval=2, wait=300)
+        
+        service = Service.query.filter_by(ServiceConfig={"volume_id": volume_id}).first()
+        if service:
+            service.ServiceConfig["volume_status"] = "in-use"
+            service.ServiceConfig["attached_to"] = server_id
+            service.ServiceConfig["vm_name"] = server.name
+            db.session.commit()
+            logger.info(f"user: {user.UserName} attached Disk: {service.ServiceName} to VM: {server.name}")
+        else:
+            flash("Volume not fund", "error")
+            return redirect(url_for("diskstorage", disk_updated="false"))
+
+    elif action == "detach":
+        if team_member.RoleId == 3:
+            flash("Not authorized", "error")
+            return redirect(url_for("diskstorage", disk_updated="false"))
+
+        volume = conn.block_storage.get_volume(volume_id)
+        server = conn.compute.get_server(server_id)
+        
+        # Detach volume
+        conn.compute.delete_volume_attachment(volume_id=volume_id, server=server)
+        conn.block_storage.wait_for_status(volume, status='available', interval=2, wait=300)
+        
+        service = Service.query.filter_by(ServiceConfig={"volume_id": volume_id}).first()
+        if service:
+            service.ServiceConfig["volume_status"] = "available"
+            service.ServiceConfig["attached_to"] = None
+            service.ServiceConfig["vm_name"] = None
+            db.session.commit()
+            logger.info(f"user: {user.UserName} detached Disk: {service.ServiceName} from VM: {server.name}")
+        else:
+            flash("Volume not fund", "error")
+            return redirect(url_for("diskstorage", disk_updated="false"))
+
+    elif action == "delete":
+        if team_member.RoleId != 1:
+            flash("Not authorized", "error")
+            return redirect(url_for("diskstorage", disk_updated="false"))
+
+        volume = conn.block_storage.get_volume(volume_id)
+        if volume.status == 'in-use':
+            flash("Volume in use, can't delete", "error")
+            return redirect(url_for("diskstorage", disk_updated="false"))
+        
+        # Delete from OpenStack
+        conn.block_storage.delete_volume(volume)
+        
+        service = Service.query.filter_by(ServiceConfig={"volume_id": volume_id}).first()
+        if service:
+            logger.info(f"user: {user.UserName} deleted Disk: {service.ServiceName}")
+            db.session.delete(service)
+            db.session.commit()
+        else:
+            flash("Volume not fund", "error")
+            return redirect(url_for("diskstorage", disk_updated="false"))
+        
+    return redirect(url_for("diskstorage", disk_updated="true"))
+
 
 '''
 para ver todas as equipas de 1 user

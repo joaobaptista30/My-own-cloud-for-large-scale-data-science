@@ -13,9 +13,9 @@ Services needed:
     [X] display ssh comand for VM connection
     [X] automate the elasticy to grows and shrink as needed (also make it shutdown after 5 min of inactivity) (ceilometer to check usage)
 
-[] - Disk storage (cinderv3)
-    [] create/delete Disk
-    [] attach/detach volume from VM
+[X] - Disk storage (cinderv3)
+    [X] create/delete Disk
+    [X] attach/detach volume from VM
 
 [] - Container service
     []
