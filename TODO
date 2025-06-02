@@ -22,7 +22,5 @@ Services needed:
     []
     []
 
-[] - Database service
-    []
-    []
-    []
+[X] - Database service (trove)
+    [X] create/delete db

@@ -41,6 +41,7 @@
             <tr>
                 <th>Name</th>
                 <th>Status</th>
+                <th>Size</th>
                 <th>Description</th>
                 <th>IP</th>
                 <th style="text-align: center;">Actions</th>
@@ -50,7 +51,8 @@
             {% for service in services %}
                 <tr>
                     <td>{{ service.ServiceName }}</td>
-                    <td> {{ service.ServiceConfig.server_status }} </td>
+                    <td>{{ service.ServiceConfig.server_status }}</td>
+                    <td>{{ service.ServiceConfig.server_size }}</td>
                     <td>{{ service.ServiceConfig.server_description if service.ServiceConfig.server_description!="" else "No description" }}</td>
                     <td>ssh cirros@{{ service.ServiceConfig.server_ip }}</td>
                     <td style="text-align: center; vertical-align: middle;">

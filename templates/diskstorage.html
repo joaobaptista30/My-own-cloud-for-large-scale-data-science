@@ -57,7 +57,7 @@
                     <td>{{ service.ServiceName }}</td>
                     <td>{{ service.ServiceConfig.volume_status }}</td>
                     <td>{{ service.ServiceConfig.volume_size }}</td>
-                    <td>{{ service.ServiceConfig.server_description if service.ServiceConfig.server_description!="" else "No description" }}</td>
+                    <td>{{ service.ServiceConfig.volume_description if service.ServiceConfig.volume_description!="" else "No description" }}</td>
                     <td>{{ service.ServiceConfig.vm_name or '---' }}</td>
                     <td style="text-align: center; vertical-align: middle;">
                         <div class="action_buttons">
