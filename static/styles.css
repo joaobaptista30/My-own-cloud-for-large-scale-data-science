@@ -242,6 +242,42 @@
             font-size: 45px;
         }
 
+        .account_update_form {
+            font-size: 20px;
+            display: flex;
+            flex-direction: column;
+            width: 60%;
+            gap: 10px;
+        }
+
+        .account_update_form label {
+            font-weight: bold;
+        }
+
+        .account_update_form input {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        .account_update_form button {
+            width: fit-content;
+            background-color: var(--darkerblue);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 7px;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .account_update_form button:hover {
+            background-color: var(--lightorange);
+            color: black;
+        }
+
+
         .create_team_button{
             font-size: 20px;
             background: var(--darkerblue);

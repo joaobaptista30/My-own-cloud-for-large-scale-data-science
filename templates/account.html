@@ -16,6 +16,21 @@
     <div class="account_info">
         <div class="acc {{ 'hidden' if page != 'acc' else ' ' }}">
             <h1>Account</h1>
+            <form method="POST" action="/api/account/update" class="account_update_form">
+                <label for="name">Username:</label>
+                <input type="text" id="name" name="name" placeholder="{{ session['username'] }}" value="{{ session['username'] }}" required>
+
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" placeholder="{{ email }}">
+
+                <label for="current_password">Current Password:</label>
+                <input type="password" id="current_password" name="current_password" placeholder="Enter current password">
+
+                <label for="new_password">New Password:</label>
+                <input type="password" id="new_password" name="new_password" placeholder="Enter new password">
+
+                <button type="submit">Update Account</button>
+            </form>
         </div>
 
         <div class="teamslist {{ 'hidden' if page != 'teams' else ' ' }}">

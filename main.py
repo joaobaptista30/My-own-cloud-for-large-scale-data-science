@@ -171,7 +171,7 @@ def account():
                 'RoleName': role_name}
                 for team, role_name in teams]
             
-    return render_template('account.html',page=page, teams=team_data)
+    return render_template('account.html',page=page, teams=team_data, email=user.UserEmail)
 
 @APP.route('/virtualmachine')
 def virtualmachine():
@@ -284,6 +284,48 @@ def api_login():
 def api_logout():
     session.clear()
     return redirect(url_for("index"))
+
+
+@APP.route('/api/account/update', methods=["POST"])
+def update_account():
+    if not session.get("token") or not verify_token(session.get("token")):
+        return redirect(url_for("login"))
+
+    user = User.query.filter_by(UserName=session["username"]).first()
+    if not user:
+        flash("User not found", "error")
+        return redirect(url_for("account", page="acc"))
+
+    name = request.form.get("name")
+    email = request.form.get("email")
+    current_password = request.form.get("current_password")
+    new_password = request.form.get("new_password")
+
+    # Username update
+    if name and name != user.UserName:
+        if User.query.filter_by(UserName=name).first():
+            flash("Username already taken", "error")
+        else:
+            user.UserName = name
+            session["username"] = name
+
+    # Email update
+    if email and email != user.UserEmail:
+        if User.query.filter_by(UserEmail=email).first():
+            flash("Email already in use", "error")
+        else:
+            user.UserEmail = email
+
+    # Password update
+    if new_password:
+        if not current_password or not bcrypt.checkpw(current_password.encode("utf-8"), user.UserPasswordHash):
+            flash("Incorrect current password", "error")
+            return redirect(url_for("account", page="acc"))
+        user.UserPasswordHash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt())
+
+    db.session.commit()
+    flash("Account updated successfully", "success")
+    return redirect(url_for("account", page="acc"))
 
 
 @APP.route('/api/createteam', methods=["POST"])

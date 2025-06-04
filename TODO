@@ -1,11 +1,11 @@
 Services needed:
 
-[] - User registration, secure login and account management
+[X] - User registration, secure login and account management
     [X] login/register page
     [X] login/register and logout functions
     [X] dashboard page
-    [X] team management (add member | change role | <missing> remove member)
-    [] account management functionalities
+    [X] team management (add member | change role)
+    [X] account management functionalities
 
 [X] - Provision of computational resources that is elastic (shrinks and grows as needed) (nova)
     [X] create/delete VM
