@@ -487,7 +487,14 @@
     }
 }
 
-
+.left-sticky-info {
+    position: fixed;
+    top: 140px;
+    left: 60px;
+    width: 280px;
+    z-index: 10;
+    font-size: 1.2em;
+}
 
 
 .flash-popup {
